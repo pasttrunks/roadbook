@@ -129,7 +129,16 @@ def main() -> None:
             smoke_file.unlink(missing_ok=True)
 
             def confirm_loaded() -> None:
-                smoke_file.write_text("Roadbook loaded successfully.\n", encoding="utf-8")
+                ready = window.evaluate_js(
+                    "document.documentElement.dataset.appReady === 'true' "
+                    "&& document.querySelectorAll('.nav-item').length === 6 "
+                    "&& Boolean(document.getElementById('dueNowCount'))"
+                )
+                if ready:
+                    smoke_file.write_text(
+                        "Roadbook loaded and rendered successfully.\n",
+                        encoding="utf-8",
+                    )
                 window.destroy()
 
             window.events.loaded += confirm_loaded

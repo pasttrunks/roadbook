@@ -16,8 +16,11 @@ Roadbook turns scattered vehicle paperwork into a useful ownership record. Add a
 - Import from text-based Carfax PDFs, TXT files, CSV files, or pasted history.
 - Review every detected record before it is saved.
 - Track maintenance, repairs, fuel, parts, insurance, and other expenses.
+- Log gallons and full fill-ups to calculate real-world fuel economy.
 - See upcoming service, overdue items, spending trends, and cost per mile.
-- Export JSON backups and CSV expense reports.
+- Search, edit, or remove imported and manually entered service records.
+- Export JSON backups, expense CSVs, or a complete shareable vehicle history.
+- Keep an optional VIN or chassis number of any length, including classic vehicles.
 - Light and dark themes with a responsive desktop interface.
 - Local-only storage by default.
 
@@ -57,6 +60,8 @@ PDF extraction works directly in the Windows app. In a browser preview, PDF extr
 Vehicle data is stored locally under the `roadbook-ledger-v2` browser-storage key. Roadbook does not include analytics, advertising, accounts, or a remote database.
 
 Use **Reports → Export backup** regularly. A JSON backup can restore the full ledger on another computer. Expense data can also be exported as CSV.
+
+Roadbook intentionally avoids accounts, advertising, market-value estimates, repair-shop booking, and opaque vehicle “health” scores. It records the facts you enter and keeps maintenance intervals editable instead of pretending to diagnose the vehicle.
 
 ## Run from source
 

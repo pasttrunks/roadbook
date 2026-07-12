@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light dark" />
   <title>Roadbook — Your vehicle, organized</title>
   <link rel="icon" href="roadbook.png" />
-  <link rel="stylesheet" href="styles.css?v=1.0.0" />
+  <link rel="stylesheet" href="styles.css?v=1.1.0" />
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -57,7 +57,7 @@
           </div>
           <div class="hero-art" aria-hidden="true">
             <svg class="car" viewBox="0 0 520 190"><path d="M47 115c7-19 20-29 39-31l43-5 47-43c9-9 21-14 34-14h102c20 0 38 8 51 23l32 36 67 18c19 5 32 22 32 42v10h-37c-3-25-23-44-49-44s-46 19-49 44H167c-3-25-23-44-49-44s-46 19-49 44H34v-16c0-7 5-15 13-20Z"/><circle cx="118" cy="151" r="31"/><circle cx="408" cy="151" r="31"/></svg>
-            <div class="health-ring"><svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="62" class="meter-bg"/><circle cx="80" cy="80" r="62" class="meter-fill" id="healthMeter"/></svg><div><strong id="healthScore">—</strong><span>health</span></div></div>
+            <div class="status-bubble"><strong id="dueNowCount">0</strong><span>due now</span></div>
           </div>
         </article>
 
@@ -82,9 +82,9 @@
 
       <section class="view" id="maintenanceView">
         <div class="section-toolbar"><div><p class="eyebrow">Service workspace</p><h3>Maintenance</h3><p>What is due, what is done, and what the report never confirmed.</p></div><div class="toolbar-actions"><button class="ghost" id="addCustomServiceBtn">New schedule item</button><button class="secondary" id="addMaintenanceBtn">Log service</button></div></div>
-        <div class="control-strip surface"><div class="hint"><strong>Schedule 2</strong><span>Selected for short trips, winter salt, wet conditions, and harder use.</span></div><select id="statusFilter" aria-label="Filter maintenance by status"><option value="all">All statuses</option><option value="overdue">Overdue</option><option value="soon">Due soon</option><option value="ok">On track</option><option value="unknown">Needs history</option></select></div>
+        <div class="control-strip surface"><div class="hint"><strong id="scheduleHintLabel">Schedule 1</strong><span id="scheduleHintText">Normal service intervals are active.</span></div><select id="statusFilter" aria-label="Filter maintenance by status"><option value="all">All statuses</option><option value="overdue">Overdue</option><option value="soon">Due soon</option><option value="ok">On track</option><option value="unknown">Needs history</option></select></div>
         <article class="sheet-panel surface maintenance-sheet"><div class="sheet-labels maintenance-labels"><span>Service item</span><span>Schedule / last record / next due</span><span>Actions</span></div><div id="maintenanceList" class="service-list"></div></article>
-        <article class="sheet-panel surface history-panel"><div class="panel-header"><div><p class="eyebrow">Imported & manual</p><h3>Service history</h3></div><span class="muted-note">Latest records first</span></div><div class="table-wrap history-table-wrap"><table><thead><tr><th>Date</th><th>Mileage</th><th>Service</th><th>Source</th><th>Cost</th><th>Notes</th></tr></thead><tbody id="maintenanceHistoryRows"></tbody></table></div></article>
+        <article class="sheet-panel surface history-panel"><div class="panel-header"><div><p class="eyebrow">Imported & manual</p><h3>Service history</h3></div><input class="compact-search" id="maintenanceHistorySearch" type="search" placeholder="Search service history…" aria-label="Search service history" /></div><div class="table-wrap history-table-wrap"><table><thead><tr><th>Date</th><th>Mileage</th><th>Service</th><th>Source</th><th>Cost</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="maintenanceHistoryRows"></tbody></table></div></article>
       </section>
 
       <section class="view" id="expensesView">
@@ -103,7 +103,7 @@
       </section>
 
       <section class="view" id="reportsView">
-        <div class="section-toolbar"><div><p class="eyebrow">Decision support</p><h3>Reports</h3><p>See where the money went and what the car is asking for next.</p></div><div class="toolbar-actions"><button class="secondary" id="exportJsonBtn">Export backup</button><button class="ghost" id="exportCsvBtn">Export CSV</button></div></div>
+        <div class="section-toolbar"><div><p class="eyebrow">Decision support</p><h3>Reports</h3><p>See where the money went and what the car is asking for next.</p></div><div class="toolbar-actions"><button class="secondary" id="exportJsonBtn">Export backup</button><button class="ghost" id="exportHistoryCsvBtn">Export full history</button><button class="ghost" id="exportCsvBtn">Export expenses</button></div></div>
         <div class="split-grid reports-grid"><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Snapshot</p><h3>Ownership summary</h3></div></div><div id="reportSummary" class="summary-stack"></div></article><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Trend</p><h3 id="monthlyChartTitle">Monthly spending</h3></div></div><canvas id="monthlyChart" width="680" height="300"></canvas></article></div>
         <article class="panel surface backup-panel"><div><h3>Backup & restore</h3><p>Export a JSON backup before switching computers or clearing app data.</p></div><div class="button-row"><label class="secondary file-button" for="restoreFile">Restore JSON<input id="restoreFile" type="file" accept="application/json,.json"/></label><button class="danger" id="resetDataBtn">Reset app data</button></div></article>
       </section>
@@ -111,7 +111,7 @@
       <section class="view" id="settingsView">
         <div class="section-toolbar"><div><p class="eyebrow">Preferences</p><h3>Settings</h3><p>Keep reminders aligned with your vehicle and how you drive it.</p></div><button class="primary" id="saveSettingsBtn">Save changes</button></div>
         <div class="settings-grid">
-          <article class="panel surface form-panel"><div class="settings-title"><span>01</span><div><h3>Vehicle profile</h3><p>Identity and drivetrain affect the schedule.</p></div></div><label>Nickname<input id="vehicleNameInput" type="text"/></label><label>Year<input id="vehicleYearInput" type="number"/></label><label>Make<input id="vehicleMakeInput" type="text"/></label><label>Model<input id="vehicleModelInput" type="text"/></label><label>Trim / engine<input id="vehicleTrimInput" type="text" placeholder="Grand Touring · 2.5L"/></label><label>Drivetrain<select id="drivetrainInput"><option value="unknown">Unknown</option><option value="FWD">FWD</option><option value="AWD">AWD</option></select></label></article>
+          <article class="panel surface form-panel"><div class="settings-title"><span>01</span><div><h3>Vehicle profile</h3><p>Identity and drivetrain affect the schedule.</p></div></div><label>Nickname<input id="vehicleNameInput" type="text"/></label><label>Year<input id="vehicleYearInput" type="number"/></label><label>Make<input id="vehicleMakeInput" type="text"/></label><label>Model<input id="vehicleModelInput" type="text"/></label><label>Trim / engine<input id="vehicleTrimInput" type="text" placeholder="Grand Touring · 2.5L"/></label><label>VIN or chassis number<input id="vehicleVinInput" type="text" maxlength="40" placeholder="Any length — classic vehicles welcome"/></label><label>License plate<input id="vehiclePlateInput" type="text" maxlength="20"/></label><label>Drivetrain<select id="drivetrainInput"><option value="unknown">Unknown</option><option value="FWD">FWD</option><option value="RWD">RWD</option><option value="AWD">AWD / 4WD</option></select></label></article>
           <article class="panel surface form-panel"><div class="settings-title"><span>02</span><div><h3>Schedule behavior</h3><p>Use the frequent profile for Northeast winters and short trips.</p></div></div><label>Maintenance profile<select id="scheduleProfileInput"><option value="severe">Schedule 2 · more frequent</option><option value="normal">Schedule 1 · normal</option></select></label><label>Currency symbol<input id="currencyInput" type="text" maxlength="3"/></label><label>Tracking start mileage<input id="startMileageInput" type="number" min="0"/></label><label>“Due soon” window, miles<input id="dueSoonInput" type="number" min="0"/></label></article>
         </div>
         <article class="panel surface rules-panel"><div class="panel-header"><div><p class="eyebrow">Editable defaults</p><h3>Maintenance rules</h3></div><span class="muted-note">General starting points — verify against your owner’s manual</span></div><div id="scheduleRules" class="rules-grid"></div></article>
@@ -129,6 +129,6 @@
   </form></dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=1.0.0"></script>
+  <script src="app.js?v=1.1.0"></script>
 </body>
 </html>

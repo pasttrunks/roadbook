@@ -1,6 +1,5 @@
 const DB_KEY = 'roadbook-ledger-v2';
 const LEGACY_DB_KEY = 'cx5-care-ledger-v1';
-const METER_CIRC = 389;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -145,7 +144,7 @@ const seededMaintenance = [
 const defaultState = () => ({
   vehicle: {
     name: 'My vehicle', year: '', make: '', model: '', trim: '', drivetrain: 'unknown',
-    currentMileage: 0, startMileage: 0, currency: '$', dueSoonMiles: 1200, scheduleProfile: 'normal'
+    vin: '', plate: '', currentMileage: 0, startMileage: 0, currency: '$', dueSoonMiles: 1200, scheduleProfile: 'normal'
   },
   services: structuredClone(defaultServices),
   maintenance: [],
@@ -328,14 +327,11 @@ function render() {
 function renderDashboard() {
   const dueItems = getDueItems();
   const overdue = dueItems.filter(item => item.status === 'overdue').length;
-  const soon = dueItems.filter(item => item.status === 'soon').length;
-  const unknown = dueItems.filter(item => item.status === 'unknown').length;
   const expensesTotal = state.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const month = new Date().toISOString().slice(0, 7);
   const monthTotal = state.expenses.filter(item => (item.date || '').slice(0,7) === month).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const milesTracked = Math.max(0, Number(state.vehicle.currentMileage || 0) - Number(state.vehicle.startMileage || state.vehicle.currentMileage || 0));
   const costPerMile = milesTracked > 0 ? expensesTotal / milesTracked : 0;
-  const score = Math.max(0, Math.min(100, Math.round(100 - overdue * 10 - soon * 5 - unknown * 2.5)));
 
   $('#heroTitle').textContent = overdue ? `${overdue} service item${overdue === 1 ? '' : 's'} need a decision.` : 'Your ownership, clearly organized.';
   const highestHistoryMileage = Math.max(0, ...state.maintenance.map(item => Number(item.mileage || 0)));
@@ -344,8 +340,7 @@ function renderDashboard() {
   $('#monthSpent').textContent = money(monthTotal);
   $('#overdueCount').textContent = overdue;
   $('#costPerMile').textContent = money(costPerMile);
-  $('#healthScore').textContent = score;
-  $('#healthMeter').style.strokeDashoffset = String(METER_CIRC - METER_CIRC * (score / 100));
+  $('#dueNowCount').textContent = overdue;
 
   $('#nextDueList').innerHTML = dueItems.slice(0, 6).map(renderServiceCard).join('') || empty('No maintenance items yet.');
   renderTimeline();
@@ -357,9 +352,18 @@ function renderMaintenance() {
   const items = getDueItems().filter(item => filter === 'all' || item.status === filter);
   $('#maintenanceList').innerHTML = items.map(renderServiceCard).join('') || empty('Nothing matches this filter.');
 
+  const severe = state.vehicle.scheduleProfile === 'severe';
+  $('#scheduleHintLabel').textContent = severe ? 'Frequent use' : 'Normal use';
+  $('#scheduleHintText').textContent = severe
+    ? 'Short trips, extreme temperatures, towing, dust, or stop-and-go driving.'
+    : 'Standard service intervals are active. You can edit any schedule item.';
+
   const historyBody = $('#maintenanceHistoryRows');
   if (historyBody) {
-    const history = [...state.maintenance].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0) || Number(b.mileage || 0) - Number(a.mileage || 0));
+    const query = ($('#maintenanceHistorySearch')?.value || '').trim().toLowerCase();
+    const history = [...state.maintenance]
+      .filter(item => !query || `${serviceName(item.serviceId)} ${item.vendor} ${item.notes} ${item.date} ${item.mileage}`.toLowerCase().includes(query))
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0) || Number(b.mileage || 0) - Number(a.mileage || 0));
     historyBody.innerHTML = history.map(item => `
       <tr>
         <td>${fmtDate(item.date)}</td>
@@ -368,7 +372,8 @@ function renderMaintenance() {
         <td><span class="badge ${item.source === 'carfax' ? 'custom' : 'official'}">${escapeHTML(item.vendor || item.source || 'Manual')}</span></td>
         <td>${item.amount ? money(item.amount) : '—'}</td>
         <td>${escapeHTML(item.notes || '')}</td>
-      </tr>`).join('') || '<tr><td colspan="6">No service history yet.</td></tr>';
+        <td><div class="action-cell"><button class="tiny-button" data-action="edit-maintenance" data-record-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-maintenance" data-record-id="${item.id}">Delete</button></div></td>
+      </tr>`).join('') || '<tr><td colspan="7">No service history matches this search.</td></tr>';
   }
 }
 
@@ -418,11 +423,44 @@ function renderExpenses() {
       <td><span class="badge custom">${escapeHTML(item.category || 'Other')}</span></td>
       <td>${escapeHTML(item.vendor || '—')}</td>
       <td>${item.mileage ? `${miles(item.mileage)} mi` : '—'}</td>
-      <td><strong>${money(item.amount)}</strong></td>
+      <td><strong>${money(item.amount)}</strong>${item.category === 'Fuel' && item.gallons ? `<span class="fuel-detail">${Number(item.gallons).toFixed(2)} gal · ${money(Number(item.amount || 0) / Number(item.gallons))}/gal</span>` : ''}</td>
       <td>${escapeHTML(item.notes || '')}</td>
-      <td><button class="tiny-button" data-action="delete-expense" data-expense-id="${item.id}">Delete</button></td>
+      <td><div class="action-cell"><button class="tiny-button" data-action="edit-expense" data-expense-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-expense" data-expense-id="${item.id}">Delete</button></div></td>
     </tr>
   `).join('') || `<tr><td colspan="7">${empty('No expenses yet. Add fuel, repairs, parts, insurance, registration, tolls, and washes here.')}</td></tr>`;
+}
+
+function calculateFuelEconomy(expenses) {
+  const fuelEntries = expenses
+    .filter(item => item.category === 'Fuel' && Number(item.gallons || 0) > 0)
+    .sort((a, b) => Number(a.mileage || 0) - Number(b.mileage || 0) || new Date(a.date || 0) - new Date(b.date || 0));
+  const gallons = fuelEntries.reduce((sum, item) => sum + Number(item.gallons || 0), 0);
+  let anchorMileage = null;
+  let intervalGallons = 0;
+  let measuredMiles = 0;
+  let measuredGallons = 0;
+
+  fuelEntries.forEach(item => {
+    const mileage = Number(item.mileage || 0);
+    if (!mileage) return;
+    if (anchorMileage === null) {
+      if (item.fullTank) anchorMileage = mileage;
+      return;
+    }
+    intervalGallons += Number(item.gallons || 0);
+    if (item.fullTank && mileage > anchorMileage) {
+      measuredMiles += mileage - anchorMileage;
+      measuredGallons += intervalGallons;
+      anchorMileage = mileage;
+      intervalGallons = 0;
+    }
+  });
+
+  return {
+    gallons,
+    measuredMiles,
+    mpg: measuredGallons > 0 ? measuredMiles / measuredGallons : 0
+  };
 }
 
 function renderTimeline() {
@@ -445,6 +483,7 @@ function renderReports() {
   const total = state.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const repairMaint = state.expenses.filter(item => ['Maintenance', 'Repair', 'Parts'].includes(item.category)).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const fuel = state.expenses.filter(item => item.category === 'Fuel').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const fuelSummary = calculateFuelEconomy(state.expenses);
 
   $('#reportSummary').innerHTML = [
     ['Overdue services', due.filter(item => item.status === 'overdue').length],
@@ -452,6 +491,8 @@ function renderReports() {
     ['Unknown history items', due.filter(item => item.status === 'unknown').length],
     ['Maintenance/repair spend', money(repairMaint)],
     ['Fuel spend', money(fuel)],
+    ['Fuel logged', fuelSummary.gallons ? `${fuelSummary.gallons.toFixed(1)} gal` : '—'],
+    ['Average fuel economy', fuelSummary.mpg ? `${fuelSummary.mpg.toFixed(1)} MPG` : 'Add two full fill-ups'],
     ['Total spend', money(total)],
     ['Maintenance records', state.maintenance.length]
   ].map(([label, value]) => `<div class="summary-row"><span>${label}</span><strong>${value}</strong></div>`).join('');
@@ -465,6 +506,8 @@ function renderSettings() {
   $('#vehicleMakeInput').value = state.vehicle.make || '';
   $('#vehicleModelInput').value = state.vehicle.model || '';
   $('#vehicleTrimInput').value = state.vehicle.trim || '';
+  $('#vehicleVinInput').value = state.vehicle.vin || '';
+  $('#vehiclePlateInput').value = state.vehicle.plate || '';
   $('#drivetrainInput').value = state.vehicle.drivetrain || 'unknown';
   $('#scheduleProfileInput').value = state.vehicle.scheduleProfile || 'severe';
   $('#currencyInput').value = state.vehicle.currency || '$';
@@ -484,6 +527,8 @@ function saveSettings() {
     make: $('#vehicleMakeInput').value.trim(),
     model: $('#vehicleModelInput').value.trim(),
     trim: $('#vehicleTrimInput').value.trim(),
+    vin: $('#vehicleVinInput').value.trim(),
+    plate: $('#vehiclePlateInput').value.trim(),
     drivetrain: $('#drivetrainInput').value,
     scheduleProfile: $('#scheduleProfileInput').value,
     currency: $('#currencyInput').value.trim() || '$',
@@ -505,7 +550,12 @@ function empty(text) {
 function openDialog(mode, payload = {}) {
   dialogMode = mode;
   editingId = payload.id || null;
-  const titleMap = { expense: 'Add expense', maintenance: 'Log service', service: 'Edit service', customService: 'Add custom service' };
+  const titleMap = {
+    expense: editingId ? 'Edit expense' : 'Add expense',
+    maintenance: editingId ? 'Edit service record' : 'Log service',
+    service: 'Edit service schedule',
+    customService: 'Add custom service'
+  };
   $('#dialogTitle').textContent = titleMap[mode] || 'Add entry';
   $('#dialogFields').innerHTML = dialogFields(mode, payload);
   $('#entryDialog').showModal();
@@ -514,16 +564,19 @@ function openDialog(mode, payload = {}) {
 function dialogFields(mode, payload) {
   if (mode === 'expense') {
     const item = payload.item || {};
+    const category = item.category || 'Maintenance';
     return `
       <label>Date<input name="date" type="date" value="${item.date || todayISO()}" required /></label>
       <label>Category
         <select name="category">
-          ${['Fuel','Maintenance','Repair','Parts','Insurance','Registration','Parking','Tolls','Car wash','Inspection','Other'].map(cat => `<option ${item.category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
+          ${['Maintenance','Fuel','Repair','Parts','Insurance','Registration','Parking','Tolls','Car wash','Inspection','Other'].map(cat => `<option ${category === cat ? 'selected' : ''}>${cat}</option>`).join('')}
         </select>
       </label>
       <label>Vendor<input name="vendor" type="text" value="${escapeAttr(item.vendor || '')}" placeholder="Dealer, repair shop, parts store..." /></label>
       <label>Amount<input name="amount" type="number" min="0" step="0.01" value="${item.amount || ''}" required /></label>
       <label>Mileage<input name="mileage" type="number" min="0" step="1" value="${item.mileage || state.vehicle.currentMileage || ''}" /></label>
+      <label class="fuel-only" ${category === 'Fuel' ? '' : 'hidden'}>Gallons<input name="gallons" type="number" min="0" step="0.001" value="${item.gallons || ''}" placeholder="Required for MPG" /></label>
+      <label class="fuel-only" ${category === 'Fuel' ? '' : 'hidden'}><span><input name="fullTank" type="checkbox" ${item.fullTank !== false ? 'checked' : ''} /> Full fill-up</span></label>
       <label>Notes<textarea name="notes" rows="3" placeholder="What was this for?">${escapeHTML(item.notes || '')}</textarea></label>
     `;
   }
@@ -571,25 +624,31 @@ function saveDialog(event) {
   event.preventDefault();
   const form = new FormData($('#entryForm'));
   if (dialogMode === 'expense') {
-    state.expenses.push({
-      id: uid(), date: form.get('date'), category: form.get('category'), vendor: form.get('vendor'),
-      amount: Number(form.get('amount') || 0), mileage: Number(form.get('mileage') || 0), notes: form.get('notes') || ''
-    });
+    const record = {
+      id: editingId || uid(), date: form.get('date'), category: form.get('category'), vendor: form.get('vendor'),
+      amount: Number(form.get('amount') || 0), mileage: Number(form.get('mileage') || 0), notes: form.get('notes') || '',
+      gallons: form.get('category') === 'Fuel' ? Number(form.get('gallons') || 0) : 0,
+      fullTank: form.get('category') === 'Fuel' ? Boolean(form.get('fullTank')) : false
+    };
+    const index = state.expenses.findIndex(item => item.id === editingId);
+    if (index >= 0) state.expenses[index] = record; else state.expenses.push(record);
     updateMileageFromForm(form.get('mileage'));
-    toast('Expense saved.');
+    toast(index >= 0 ? 'Expense updated.' : 'Expense saved.');
   }
 
   if (dialogMode === 'maintenance') {
+    const existingRecord = state.maintenance.find(item => item.id === editingId);
     const record = {
-      id: uid(), serviceId: form.get('serviceId'), date: form.get('date'), mileage: Number(form.get('mileage') || 0),
-      amount: Number(form.get('amount') || 0), vendor: form.get('vendor') || '', notes: form.get('notes') || '', source: 'manual'
+      id: editingId || uid(), serviceId: form.get('serviceId'), date: form.get('date'), mileage: Number(form.get('mileage') || 0),
+      amount: Number(form.get('amount') || 0), vendor: form.get('vendor') || '', notes: form.get('notes') || '', source: existingRecord?.source || 'manual'
     };
-    state.maintenance.push(record);
-    if (form.get('alsoExpense') && record.amount) {
+    const index = state.maintenance.findIndex(item => item.id === editingId);
+    if (index >= 0) state.maintenance[index] = record; else state.maintenance.push(record);
+    if (index < 0 && form.get('alsoExpense') && record.amount) {
       state.expenses.push({ id: uid(), date: record.date, category: 'Maintenance', vendor: record.vendor, amount: record.amount, mileage: record.mileage, notes: `${serviceName(record.serviceId)}. ${record.notes || ''}`.trim() });
     }
     updateMileageFromForm(record.mileage);
-    toast('Maintenance logged.');
+    toast(index >= 0 ? 'Service record updated.' : 'Maintenance logged.');
   }
 
   if (dialogMode === 'service' || dialogMode === 'customService') {
@@ -880,11 +939,46 @@ function exportCsv() {
   downloadFile(`roadbook-expenses-${todayISO()}.csv`, csv, 'text/csv');
 }
 
+function exportHistoryCsv() {
+  const csv = buildHistoryCsv(state);
+  downloadFile(`roadbook-full-history-${todayISO()}.csv`, csv, 'text/csv');
+}
+
+function buildHistoryCsv(ledger) {
+  const header = ['Type','Date','Mileage','Category','Description','Vendor','Amount','Notes'];
+  const serviceRows = ledger.maintenance.map(item => [
+    'Service', item.date, item.mileage, ledger.services.find(service => service.id === item.serviceId)?.category || 'Service',
+    ledger.services.find(service => service.id === item.serviceId)?.name || 'Service', item.vendor || item.source || '', item.amount || 0, item.notes || ''
+  ]);
+  const expenseRows = ledger.expenses.map(item => [
+    item.category === 'Fuel' ? 'Fuel' : 'Expense', item.date, item.mileage, item.category, item.category,
+    item.vendor || '', item.amount || 0,
+    [item.notes, item.gallons ? `${item.gallons} gallons${item.fullTank ? ', full fill-up' : ''}` : ''].filter(Boolean).join(' · ')
+  ]);
+  const rows = [...serviceRows, ...expenseRows]
+    .sort((a, b) => new Date(b[1] || 0) - new Date(a[1] || 0) || Number(b[2] || 0) - Number(a[2] || 0));
+  const vehicle = [ledger.vehicle.year, ledger.vehicle.make, ledger.vehicle.model, ledger.vehicle.trim].filter(Boolean).join(' ');
+  const metadata = [
+    ['Roadbook vehicle', vehicle],
+    ['Nickname', ledger.vehicle.name || ''],
+    ['VIN or chassis number', ledger.vehicle.vin || ''],
+    ['License plate', ledger.vehicle.plate || ''],
+    []
+  ];
+  return [...metadata, header, ...rows].map(row => row.map(csvCell).join(',')).join('\n');
+}
+
 function csvCell(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
 }
 
-function downloadFile(filename, text, type) {
+async function downloadFile(filename, text, type) {
+  if (window.pywebview?.api?.save_text_file) {
+    const result = await window.pywebview.api.save_text_file(filename, text);
+    if (result?.ok) toast(`Saved ${result.name}.`);
+    else if (result?.message && result.message !== 'Save cancelled') toast(result.message);
+    return;
+  }
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -987,8 +1081,14 @@ function attachEvents() {
   $('#useDemoBtn')?.addEventListener('click', useDemo);
   $('#exportCsvInlineBtn')?.addEventListener('click', exportCsv);
   $('#statusFilter').addEventListener('change', renderMaintenance);
+  $('#maintenanceHistorySearch').addEventListener('input', renderMaintenance);
   $('#expenseSearch').addEventListener('input', renderExpenses);
   $('#entryForm').addEventListener('submit', saveDialog);
+  $('#entryForm').addEventListener('change', event => {
+    if (event.target.name !== 'category') return;
+    const showFuel = event.target.value === 'Fuel';
+    $$('.fuel-only', $('#entryForm')).forEach(field => field.hidden = !showFuel);
+  });
   $('#closeDialogBtn').addEventListener('click', () => $('#entryDialog').close());
   $('#cancelDialogBtn').addEventListener('click', () => $('#entryDialog').close());
 
@@ -1001,9 +1101,24 @@ function attachEvents() {
       const service = state.services.find(item => item.id === actionEl.dataset.serviceId);
       openDialog('service', { id: service.id, service });
     }
+    if (action === 'edit-expense') {
+      const item = state.expenses.find(record => record.id === actionEl.dataset.expenseId);
+      if (item) openDialog('expense', { id: item.id, item });
+    }
     if (action === 'delete-expense') {
+      if (!confirm('Delete this expense?')) return;
       state.expenses = state.expenses.filter(item => item.id !== actionEl.dataset.expenseId);
       toast('Expense deleted.');
+      render();
+    }
+    if (action === 'edit-maintenance') {
+      const item = state.maintenance.find(record => record.id === actionEl.dataset.recordId);
+      if (item) openDialog('maintenance', { id: item.id, ...item });
+    }
+    if (action === 'delete-maintenance') {
+      if (!confirm('Delete this service record? This changes the next-due calculation.')) return;
+      state.maintenance = state.maintenance.filter(item => item.id !== actionEl.dataset.recordId);
+      toast('Service record deleted.');
       render();
     }
   });
@@ -1040,6 +1155,7 @@ function attachEvents() {
   $('#exportJsonBtn').addEventListener('click', exportJson);
   $('#quickExportBtn').addEventListener('click', exportJson);
   $('#exportCsvBtn').addEventListener('click', exportCsv);
+  $('#exportHistoryCsvBtn').addEventListener('click', exportHistoryCsv);
   $('#restoreFile').addEventListener('change', event => restoreJson(event.target.files[0]));
   $('#resetDataBtn').addEventListener('click', () => {
     if (!confirm('Reset all saved car data in this browser? Export a backup first if you need it.')) return;
@@ -1064,4 +1180,5 @@ applyTheme();
 attachEvents();
 renderParsedResults();
 render();
+document.documentElement.dataset.appReady = 'true';
 if (!state.onboardingComplete) $('#welcomeDialog').showModal();

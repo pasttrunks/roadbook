@@ -1,0 +1,21 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+
+const htmlIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+assert.equal(new Set(htmlIds).size, htmlIds.length, 'index.html contains duplicate IDs');
+
+const referencedIds = [...app.matchAll(/\$\('#([^']+)'\)/g)].map(match => match[1]);
+const missingIds = [...new Set(referencedIds)].filter(id => !htmlIds.includes(id));
+assert.deepEqual(missingIds, [], `app.js references missing element IDs: ${missingIds.join(', ')}`);
+
+assert.match(html, /id="dueNowCount"/, 'The factual due-now indicator is missing');
+assert.doesNotMatch(html, /id="healthScore"/, 'The deprecated opaque health score returned');
+assert.match(html, /id="exportHistoryCsvBtn"/, 'Full-history export is missing');
+assert.match(html, /id="vehicleVinInput"/, 'Flexible VIN/chassis field is missing');
+
+console.log('UI contract regression test passed.');

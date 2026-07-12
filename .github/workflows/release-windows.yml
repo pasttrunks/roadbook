@@ -26,8 +26,9 @@ jobs:
       - name: Install build dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Run parser regression test
-        run: node tests/parser.test.cjs
+      - name: Run JavaScript regression tests
+        shell: pwsh
+        run: Get-ChildItem tests\*.test.cjs | ForEach-Object { node $_.FullName }
 
       - name: Build Roadbook
         shell: pwsh
