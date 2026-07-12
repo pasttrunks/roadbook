@@ -1,4 +1,4 @@
-# Roadbook 1.1.1
+# Roadbook 1.1.2
 
 This reliability update turns Roadbook into a genuine single-file Windows app.
 

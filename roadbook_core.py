@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.1.2"
 RELEASE_API = "https://api.github.com/repos/pasttrunks/roadbook/releases/latest"
 RELEASE_ASSET = "Roadbook.exe"
 

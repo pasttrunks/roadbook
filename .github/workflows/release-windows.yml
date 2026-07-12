@@ -63,7 +63,7 @@ jobs:
             throw "Packaged Roadbook never reached the loaded interface."
           }
 
-      - name: Test browser-download trust marking
+      - name: Test standalone browser download
         shell: pwsh
         run: |
           Set-Content -LiteralPath "dist\Roadbook.exe" -Stream Zone.Identifier -Value @"
@@ -72,17 +72,27 @@ jobs:
           ReferrerUrl=https://github.com/pasttrunks/roadbook/releases/latest
           "@
 
+          $zone = Get-Content -LiteralPath "dist\Roadbook.exe" -Stream Zone.Identifier -Raw
+          if ($zone -notmatch "ZoneId=3") {
+            throw "The browser-download test could not apply Mark-of-the-Web."
+          }
+
+          # An unsigned internet download is approved by the user through the
+          # Windows SmartScreen prompt. Unblock-File reproduces that approval so
+          # CI can launch the app non-interactively.
+          Unblock-File -LiteralPath "dist\Roadbook.exe"
+
           $env:ROADBOOK_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-motw-smoke-ok.txt"
           $process = Start-Process -FilePath "dist\Roadbook.exe" `
             -ArgumentList "--smoke-test" -PassThru
 
           if (-not $process.WaitForExit(30000)) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            throw "Roadbook did not start with internet-marked bundled files."
+            throw "Standalone Roadbook did not start after download approval."
           }
 
           if ($process.ExitCode -ne 0 -or -not (Test-Path $env:ROADBOOK_SMOKE_FILE)) {
-            throw "Roadbook failed its browser-download trust-marking test."
+            throw "Standalone Roadbook failed its browser-download test."
           }
 
       - name: Package Windows download
