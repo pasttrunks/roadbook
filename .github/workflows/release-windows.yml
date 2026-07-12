@@ -39,6 +39,8 @@ jobs:
             --add-data "roadbook.png;." `
             desktop_app.py
 
+          Copy-Item Roadbook.exe.config dist\Roadbook\Roadbook.exe.config
+
       - name: Launch-test packaged application
         shell: pwsh
         run: |
@@ -57,6 +59,29 @@ jobs:
 
           if (-not (Test-Path $env:ROADBOOK_SMOKE_FILE)) {
             throw "Packaged Roadbook never reached the loaded interface."
+          }
+
+      - name: Test browser-download trust marking
+        shell: pwsh
+        run: |
+          $runtimeDll = "dist\Roadbook\_internal\pythonnet\runtime\Python.Runtime.dll"
+          Set-Content -LiteralPath $runtimeDll -Stream Zone.Identifier -Value @"
+          [ZoneTransfer]
+          ZoneId=3
+          ReferrerUrl=https://github.com/pasttrunks/roadbook/releases/latest
+          "@
+
+          $env:ROADBOOK_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-motw-smoke-ok.txt"
+          $process = Start-Process -FilePath "dist\Roadbook\Roadbook.exe" `
+            -ArgumentList "--smoke-test" -PassThru
+
+          if (-not $process.WaitForExit(30000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Roadbook did not start with internet-marked bundled files."
+          }
+
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $env:ROADBOOK_SMOKE_FILE)) {
+            throw "Roadbook failed its browser-download trust-marking test."
           }
 
       - name: Package Windows download

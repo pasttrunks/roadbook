@@ -25,6 +25,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
+copy /y "Roadbook.exe.config" "dist\Roadbook\Roadbook.exe.config" >nul
+if errorlevel 1 (
+  echo Failed to copy the .NET runtime configuration into the build.
+  pause
+  exit /b 1
+)
+
 echo.
 echo Build complete: dist\Roadbook\Roadbook.exe
 pause

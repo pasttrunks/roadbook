@@ -30,6 +30,8 @@ Roadbook turns scattered vehicle paperwork into a useful ownership record. Add a
 
 Keep the entire extracted `Roadbook` folder together. Windows may show a SmartScreen notice because this community build is not code-signed; choose **More info → Run anyway** only when you downloaded it from this repository.
 
+The release includes a .NET runtime configuration so Roadbook can load its own bundled WebView libraries even when Windows preserves an internet-origin mark on files extracted from the ZIP.
+
 Roadbook uses Microsoft Edge WebView2, which is included with current Windows 10 and Windows 11 installations.
 
 ## First launch
@@ -96,6 +98,7 @@ The packaged application is created at `dist\Roadbook\Roadbook.exe`. GitHub Acti
 | `styles.css` | Responsive light/dark visual system |
 | `app.js` | Ledger, schedules, imports, charts, and local storage |
 | `desktop_app.py` | Windows WebView2 shell and local file APIs |
+| `Roadbook.exe.config` | Trust configuration for bundled .NET WebView libraries |
 | `start_server.py` | Lightweight browser-preview server |
 | `build_windows.bat` | Local PyInstaller build |
 
