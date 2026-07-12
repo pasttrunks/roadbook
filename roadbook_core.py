@@ -7,16 +7,15 @@ import re
 import shutil
 import tempfile
 import urllib.request
-import zipfile
 from datetime import datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 RELEASE_API = "https://api.github.com/repos/pasttrunks/roadbook/releases/latest"
-RELEASE_ASSET = "Roadbook-Windows.zip"
+RELEASE_ASSET = "Roadbook.exe"
 
 
 def version_tuple(value: str) -> tuple[int, ...]:
@@ -163,21 +162,16 @@ class ReleaseUpdater:
                 raise ValueError("Roadbook's installation folder could not be verified")
 
             update_root = Path(tempfile.mkdtemp(prefix="roadbook-update-"))
-            archive = update_root / RELEASE_ASSET
+            downloaded_exe = update_root / RELEASE_ASSET
             request = urllib.request.Request(asset_url, headers={"User-Agent": f"Roadbook/{self.current_version}"})
-            with urllib.request.urlopen(request, timeout=60) as response, archive.open("wb") as output:  # noqa: S310
+            with urllib.request.urlopen(request, timeout=60) as response, downloaded_exe.open("wb") as output:  # noqa: S310
                 shutil.copyfileobj(response, output)
-            self._verify_digest(archive, digest)
+            self._verify_digest(downloaded_exe, digest)
+            self._validate_executable(downloaded_exe)
 
-            staging = update_root / "staging"
-            with zipfile.ZipFile(archive) as bundle:
-                self._validate_bundle(bundle)
-                bundle.extractall(staging)
-
-            source_dir = staging / "Roadbook"
             script_path = update_root / "install-roadbook-update.ps1"
             script_path.write_text(
-                self._updater_script(source_dir, install_dir, process_id),
+                self._updater_script(downloaded_exe, install_dir, process_id),
                 encoding="utf-8-sig",
             )
             return {"ok": True, "script_path": str(script_path), "version": self.current_version}
@@ -207,26 +201,20 @@ class ReleaseUpdater:
             raise ValueError("The update checksum did not match GitHub's release digest")
 
     @staticmethod
-    def _validate_bundle(bundle: zipfile.ZipFile) -> None:
-        names = bundle.namelist()
-        for name in names:
-            path = PurePosixPath(name)
-            if path.is_absolute() or ".." in path.parts:
-                raise ValueError("The update archive contains an unsafe path")
-        required = {"Roadbook/Roadbook.exe", "Roadbook/Roadbook.exe.config"}
-        if not required.issubset(set(names)):
-            raise ValueError("The update archive is missing required Roadbook files")
-        broken = bundle.testzip()
-        if broken:
-            raise ValueError(f"The update archive is corrupt near {broken}")
+    def _validate_executable(executable: Path) -> None:
+        if executable.stat().st_size < 1024 * 1024:
+            raise ValueError("The downloaded Roadbook executable is unexpectedly small")
+        with executable.open("rb") as app_file:
+            if app_file.read(2) != b"MZ":
+                raise ValueError("The downloaded update is not a Windows executable")
 
     @staticmethod
-    def _updater_script(source_dir: Path, install_dir: Path, process_id: int) -> str:
+    def _updater_script(downloaded_exe: Path, install_dir: Path, process_id: int) -> str:
         def ps(value: Path) -> str:
             return str(value).replace("'", "''")
 
         return f"""$ErrorActionPreference = 'Stop'
-$source = '{ps(source_dir)}'
+$source = '{ps(downloaded_exe)}'
 $install = '{ps(install_dir)}'
 $exe = Join-Path $install 'Roadbook.exe'
 
@@ -234,8 +222,6 @@ Wait-Process -Id {int(process_id)} -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 750
 
 if (-not (Test-Path -LiteralPath $exe)) {{ throw 'Roadbook installation could not be verified.' }}
-$internal = Join-Path $install '_internal'
-if (Test-Path -LiteralPath $internal) {{ Remove-Item -LiteralPath $internal -Recurse -Force }}
-Get-ChildItem -LiteralPath $source -Force | Copy-Item -Destination $install -Recurse -Force
+Copy-Item -LiteralPath $source -Destination $exe -Force
 Start-Process -FilePath $exe
 """

@@ -36,20 +36,18 @@ jobs:
       - name: Build Roadbook
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --windowed --name Roadbook --icon roadbook.ico `
+          pyinstaller --noconfirm --clean --onefile --windowed --name Roadbook --icon roadbook.ico `
             --add-data "index.html;." `
             --add-data "styles.css;." `
             --add-data "app.js;." `
             --add-data "roadbook.png;." `
             desktop_app.py
 
-          Copy-Item Roadbook.exe.config dist\Roadbook\Roadbook.exe.config
-
       - name: Launch-test packaged application
         shell: pwsh
         run: |
           $env:ROADBOOK_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-smoke-ok.txt"
-          $process = Start-Process -FilePath "dist\Roadbook\Roadbook.exe" `
+          $process = Start-Process -FilePath "dist\Roadbook.exe" `
             -ArgumentList "--smoke-test" -PassThru
 
           if (-not $process.WaitForExit(30000)) {
@@ -68,15 +66,14 @@ jobs:
       - name: Test browser-download trust marking
         shell: pwsh
         run: |
-          $runtimeDll = "dist\Roadbook\_internal\pythonnet\runtime\Python.Runtime.dll"
-          Set-Content -LiteralPath $runtimeDll -Stream Zone.Identifier -Value @"
+          Set-Content -LiteralPath "dist\Roadbook.exe" -Stream Zone.Identifier -Value @"
           [ZoneTransfer]
           ZoneId=3
           ReferrerUrl=https://github.com/pasttrunks/roadbook/releases/latest
           "@
 
           $env:ROADBOOK_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-motw-smoke-ok.txt"
-          $process = Start-Process -FilePath "dist\Roadbook\Roadbook.exe" `
+          $process = Start-Process -FilePath "dist\Roadbook.exe" `
             -ArgumentList "--smoke-test" -PassThru
 
           if (-not $process.WaitForExit(30000)) {
@@ -90,18 +87,26 @@ jobs:
 
       - name: Package Windows download
         shell: pwsh
-        run: Compress-Archive -Path dist\Roadbook -DestinationPath Roadbook-Windows.zip
+        run: |
+          New-Item -ItemType Directory -Path package\Roadbook -Force | Out-Null
+          Copy-Item dist\Roadbook.exe package\Roadbook\Roadbook.exe
+          Copy-Item Roadbook.exe.config package\Roadbook\Roadbook.exe.config
+          Compress-Archive -Path package\Roadbook -DestinationPath Roadbook-Windows.zip
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: Roadbook-Windows
-          path: Roadbook-Windows.zip
+          path: |
+            dist/Roadbook.exe
+            Roadbook-Windows.zip
 
       - name: Publish GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: Roadbook-Windows.zip
+          files: |
+            dist/Roadbook.exe
+            Roadbook-Windows.zip
           body_path: RELEASE_NOTES.md
           make_latest: true

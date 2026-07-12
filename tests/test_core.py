@@ -2,7 +2,6 @@ import hashlib
 import json
 import tempfile
 import unittest
-import zipfile
 from pathlib import Path
 
 from roadbook_core import APP_VERSION, ReleaseUpdater, RoadbookStore, version_tuple
@@ -43,24 +42,20 @@ class ReleaseUpdaterTests(unittest.TestCase):
 
     def test_release_url_validation(self) -> None:
         ReleaseUpdater._validate_asset_url(
-            "https://github.com/pasttrunks/roadbook/releases/download/v1.1.0/Roadbook-Windows.zip"
+            "https://github.com/pasttrunks/roadbook/releases/download/v1.1.1/Roadbook.exe"
         )
         with self.assertRaises(ValueError):
-            ReleaseUpdater._validate_asset_url("https://example.com/Roadbook-Windows.zip")
+            ReleaseUpdater._validate_asset_url("https://example.com/Roadbook.exe")
 
-    def test_bundle_and_digest_validation(self) -> None:
+    def test_executable_and_digest_validation(self) -> None:
         with tempfile.TemporaryDirectory() as root:
-            archive = Path(root) / "Roadbook-Windows.zip"
-            with zipfile.ZipFile(archive, "w") as bundle:
-                bundle.writestr("Roadbook/Roadbook.exe", b"exe")
-                bundle.writestr("Roadbook/Roadbook.exe.config", b"config")
-                bundle.writestr("Roadbook/_internal/library.dll", b"dll")
-            with zipfile.ZipFile(archive) as bundle:
-                ReleaseUpdater._validate_bundle(bundle)
-            digest = "sha256:" + hashlib.sha256(archive.read_bytes()).hexdigest()
-            ReleaseUpdater._verify_digest(archive, digest)
+            executable = Path(root) / "Roadbook.exe"
+            executable.write_bytes(b"MZ" + b"\0" * (1024 * 1024))
+            ReleaseUpdater._validate_executable(executable)
+            digest = "sha256:" + hashlib.sha256(executable.read_bytes()).hexdigest()
+            ReleaseUpdater._verify_digest(executable, digest)
             with self.assertRaises(ValueError):
-                ReleaseUpdater._verify_digest(archive, "sha256:" + "0" * 64)
+                ReleaseUpdater._verify_digest(executable, "sha256:" + "0" * 64)
 
 
 if __name__ == "__main__":

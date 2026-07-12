@@ -11,7 +11,7 @@ if not exist ".venv\Scripts\python.exe" (
 call ".venv\Scripts\activate.bat"
 python -m pip install -r requirements.txt
 
-pyinstaller --noconfirm --clean --windowed --name Roadbook --icon "roadbook.ico" ^
+pyinstaller --noconfirm --clean --onefile --windowed --name Roadbook --icon "roadbook.ico" ^
   --add-data "index.html;." ^
   --add-data "styles.css;." ^
   --add-data "app.js;." ^
@@ -25,13 +25,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-copy /y "Roadbook.exe.config" "dist\Roadbook\Roadbook.exe.config" >nul
-if errorlevel 1 (
-  echo Failed to copy the .NET runtime configuration into the build.
-  pause
-  exit /b 1
-)
-
 echo.
-echo Build complete: dist\Roadbook\Roadbook.exe
+echo Build complete: dist\Roadbook.exe
 pause

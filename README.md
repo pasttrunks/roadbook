@@ -2,7 +2,7 @@
 
 **A calm, private home for your vehicle’s maintenance history and ownership costs.**
 
-[![Download Roadbook for Windows](https://img.shields.io/badge/Download_for_Windows-Latest_release-1473e6?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/pasttrunks/roadbook/releases/latest/download/Roadbook-Windows.zip)
+[![Download Roadbook for Windows](https://img.shields.io/badge/Download_for_Windows-Latest_release-1473e6?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/pasttrunks/roadbook/releases/latest/download/Roadbook.exe)
 
 > No account. No subscription. No cloud database. Your vehicle data stays on your computer.
 
@@ -26,12 +26,11 @@ Roadbook turns scattered vehicle paperwork into a useful ownership record. Add a
 
 ## Download and run on Windows
 
-1. [Download the latest **Roadbook-Windows.zip**](https://github.com/pasttrunks/roadbook/releases/latest/download/Roadbook-Windows.zip).
-2. Right-click the downloaded ZIP and choose **Extract All**.
-3. Open the extracted `Roadbook` folder.
-4. Double-click `Roadbook.exe`.
+1. [Download the latest **Roadbook.exe**](https://github.com/pasttrunks/roadbook/releases/latest/download/Roadbook.exe).
+2. Put it anywhere convenient, such as a `Roadbook` folder on your Desktop.
+3. Double-click `Roadbook.exe`.
 
-Keep the entire extracted `Roadbook` folder together. Windows may show a SmartScreen notice because this community build is not code-signed; choose **More info → Run anyway** only when you downloaded it from this repository.
+Roadbook is a single-file app; there is no `_internal` folder to keep beside it. Windows may show a SmartScreen notice because this community build is not code-signed; choose **More info → Run anyway** only when you downloaded it from this repository.
 
 The release includes a .NET runtime configuration so Roadbook can load its own bundled WebView libraries even when Windows preserves an internet-origin mark on files extracted from the ZIP.
 
@@ -99,7 +98,7 @@ After running setup once:
 build_windows.bat
 ```
 
-The packaged application is created at `dist\Roadbook\Roadbook.exe`. GitHub Actions runs the same packaging process, launch-tests the packaged interface, and publishes the complete folder as `Roadbook-Windows.zip` for version tags.
+The packaged application is created at `dist\Roadbook.exe`. GitHub Actions runs the same packaging process, launch-tests the packaged interface, and publishes the single EXE for version tags. A compatibility ZIP is also published so Roadbook 1.1.0 can perform its first automatic update.
 
 ## Project structure
 
