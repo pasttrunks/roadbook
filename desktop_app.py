@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import subprocess
 import tempfile
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -9,6 +10,8 @@ import os
 from typing import Any
 
 import webview
+
+from roadbook_core import APP_VERSION, ReleaseUpdater, RoadbookStore
 
 
 def resource_root() -> Path:
@@ -28,10 +31,76 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 
 class DesktopApi:
+    def __init__(self) -> None:
+        self.store = RoadbookStore()
+        self.updater = ReleaseUpdater()
+
+    def load_state(self) -> dict[str, Any]:
+        return self.store.load()
+
+    def save_state(self, text: str) -> dict[str, Any]:
+        return self.store.save(text)
+
+    def get_storage_info(self) -> dict[str, Any]:
+        return {**self.store.storage_info(), "version": APP_VERSION}
+
+    def choose_backup_folder(self) -> dict[str, Any]:
+        window = webview.windows[0]
+        result = window.create_file_dialog(webview.FileDialog.FOLDER, allow_multiple=False)
+        if not result:
+            return {"ok": False, "cancelled": True, "message": "Folder selection cancelled"}
+        selected = result[0] if isinstance(result, (tuple, list)) else result
+        return self.store.set_backup_folder(str(selected))
+
+    def open_data_folder(self) -> dict[str, Any]:
+        try:
+            self.store.base_dir.mkdir(parents=True, exist_ok=True)
+            os.startfile(str(self.store.base_dir))  # type: ignore[attr-defined]
+            return {"ok": True}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"Could not open the data folder: {exc}"}
+
+    def check_for_updates(self) -> dict[str, Any]:
+        return self.updater.check()
+
+    def install_update(self, asset_url: str, digest: str) -> dict[str, Any]:
+        if not getattr(sys, "frozen", False):
+            return {"ok": False, "message": "Automatic updates are available in the packaged Windows app."}
+        install_dir = Path(sys.executable).resolve().parent
+        result = self.updater.prepare(asset_url, digest, install_dir, os.getpid())
+        if not result.get("ok"):
+            return result
+        try:
+            creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            subprocess.Popen(  # noqa: S603
+                [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    result["script_path"],
+                ],
+                creationflags=creation_flags,
+                close_fds=True,
+            )
+            return {"ok": True, "message": "Update ready. Roadbook will restart."}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"Could not start the updater: {exc}"}
+
+    def close_for_update(self) -> dict[str, Any]:
+        def close_window() -> None:
+            if webview.windows:
+                webview.windows[0].destroy()
+
+        threading.Timer(0.35, close_window).start()
+        return {"ok": True}
+
     def choose_carfax_file(self) -> dict[str, Any]:
         window = webview.windows[0]
         result = window.create_file_dialog(
-            webview.OPEN_DIALOG,
+            webview.FileDialog.OPEN,
             allow_multiple=False,
             file_types=(
                 "Vehicle history files (*.pdf;*.txt;*.csv)",
@@ -65,7 +134,7 @@ class DesktopApi:
             file_types = ("Text files (*.txt)", "All files (*.*)")
 
         result = window.create_file_dialog(
-            webview.SAVE_DIALOG,
+            webview.FileDialog.SAVE,
             save_filename=suggested_name,
             file_types=file_types,
         )
@@ -108,7 +177,7 @@ def main() -> None:
     server, url = start_server()
     try:
         window = webview.create_window(
-            "Roadbook — Your vehicle, organized",
+            f"Roadbook {APP_VERSION} — Your vehicle, organized",
             url,
             js_api=DesktopApi(),
             width=1460,
@@ -131,6 +200,8 @@ def main() -> None:
             def confirm_loaded() -> None:
                 ready = window.evaluate_js(
                     "document.documentElement.dataset.appReady === 'true' "
+                    "&& document.documentElement.dataset.desktopReady === 'true' "
+                    "&& Boolean(window.pywebview?.api?.load_state) "
                     "&& document.querySelectorAll('.nav-item').length === 6 "
                     "&& Boolean(document.getElementById('dueNowCount'))"
                 )
@@ -141,7 +212,10 @@ def main() -> None:
                     )
                 window.destroy()
 
-            window.events.loaded += confirm_loaded
+            def confirm_loaded_after_bridge() -> None:
+                threading.Timer(1.5, confirm_loaded).start()
+
+            window.events.loaded += confirm_loaded_after_bridge
 
         webview.start(debug=False)
 

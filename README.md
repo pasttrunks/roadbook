@@ -57,9 +57,15 @@ PDF extraction works directly in the Windows app. In a browser preview, PDF extr
 
 ## Privacy and backups
 
-Vehicle data is stored locally under the `roadbook-ledger-v2` browser-storage key. Roadbook does not include analytics, advertising, accounts, or a remote database.
+The Windows app stores the primary ledger at `%APPDATA%\Roadbook\roadbook-data.json` and keeps the ten most recent recovery copies under `%APPDATA%\Roadbook\recovery`. Browser storage remains as a compatibility copy for older installations. Roadbook does not include analytics, advertising, accounts, or a remote database.
 
-Use **Reports → Export backup** regularly. A JSON backup can restore the full ledger on another computer. Expense data can also be exported as CSV.
+Formatting or losing the computer also removes local `%APPDATA%` files. In **Reports → Where your data lives**, choose a OneDrive, Dropbox, network, USB, or other external folder to maintain `Roadbook-auto-backup.json` automatically. You can also use **Export backup** for a portable JSON copy that restores the complete ledger on another computer.
+
+## Updates
+
+The packaged Windows app checks the public GitHub Releases API when it starts. When a newer release exists, Roadbook shows the version and release notes before asking permission to download it. Update archives must come from this repository and must match GitHub's published SHA-256 digest before Roadbook installs them.
+
+Versions older than 1.1.0 do not contain the updater and require one final manual download. Once 1.1.0 or newer is installed, later releases can be downloaded and installed from inside Roadbook.
 
 Roadbook intentionally avoids accounts, advertising, market-value estimates, repair-shop booking, and opaque vehicle “health” scores. It records the facts you enter and keeps maintenance intervals editable instead of pretending to diagnose the vehicle.
 
@@ -103,7 +109,9 @@ The packaged application is created at `dist\Roadbook\Roadbook.exe`. GitHub Acti
 | `styles.css` | Responsive light/dark visual system |
 | `app.js` | Ledger, schedules, imports, charts, and local storage |
 | `desktop_app.py` | Windows WebView2 shell and local file APIs |
+| `roadbook_core.py` | Durable storage, backup mirroring, and verified updates |
 | `Roadbook.exe.config` | Trust configuration for bundled .NET WebView libraries |
+| `RELEASE_NOTES.md` | User-facing overview shown for the current release |
 | `start_server.py` | Lightweight browser-preview server |
 | `build_windows.bat` | Local PyInstaller build |
 

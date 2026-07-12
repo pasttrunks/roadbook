@@ -30,6 +30,7 @@
 
       <div class="sidebar-footer">
         <div class="local-status"><span></span><div><strong>Local & private</strong><small>Saved on this device</small></div></div>
+        <small class="version-label" id="appVersionLabel">Roadbook</small>
         <div class="footer-buttons">
           <button class="icon-button" id="quickExportBtn" title="Export backup"><svg viewBox="0 0 24 24"><path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 2.6 2.6V3h2ZM5 19h14v2H5v-2Z"/></svg></button>
           <button class="icon-button" id="themeToggleBtn" title="Toggle appearance"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8c0-.27-.01-.54-.04-.8A6.2 6.2 0 0 1 12.8 4.04C12.54 4.01 12.27 4 12 4Z"/></svg></button>
@@ -105,7 +106,8 @@
       <section class="view" id="reportsView">
         <div class="section-toolbar"><div><p class="eyebrow">Decision support</p><h3>Reports</h3><p>See where the money went and what the car is asking for next.</p></div><div class="toolbar-actions"><button class="secondary" id="exportJsonBtn">Export backup</button><button class="ghost" id="exportHistoryCsvBtn">Export full history</button><button class="ghost" id="exportCsvBtn">Export expenses</button></div></div>
         <div class="split-grid reports-grid"><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Snapshot</p><h3>Ownership summary</h3></div></div><div id="reportSummary" class="summary-stack"></div></article><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Trend</p><h3 id="monthlyChartTitle">Monthly spending</h3></div></div><canvas id="monthlyChart" width="680" height="300"></canvas></article></div>
-        <article class="panel surface backup-panel"><div><h3>Backup & restore</h3><p>Export a JSON backup before switching computers or clearing app data.</p></div><div class="button-row"><label class="secondary file-button" for="restoreFile">Restore JSON<input id="restoreFile" type="file" accept="application/json,.json"/></label><button class="danger" id="resetDataBtn">Reset app data</button></div></article>
+        <article class="panel surface storage-panel"><div><p class="eyebrow">Data safety</p><h3>Where your data lives</h3><p>Roadbook saves a readable data file outside the app folder and keeps recovery copies. A computer format still removes local files, so choose a OneDrive, Dropbox, or external-drive folder for an automatic mirror.</p><dl class="storage-paths"><div><dt>Primary data</dt><dd id="dataLocation">Browser storage</dd></div><div><dt>Automatic mirror</dt><dd id="backupLocation">Not configured</dd></div></dl></div><div class="button-row"><button class="ghost" id="openDataFolderBtn">Open data folder</button><button class="secondary" id="chooseBackupFolderBtn">Choose backup folder</button></div></article>
+        <article class="panel surface backup-panel"><div><h3>Manual backup & restore</h3><p>Export a portable JSON copy before replacing or formatting a computer.</p></div><div class="button-row"><label class="secondary file-button" for="restoreFile">Restore JSON<input id="restoreFile" type="file" accept="application/json,.json"/></label><button class="danger" id="resetDataBtn">Reset app data</button></div></article>
       </section>
 
       <section class="view" id="settingsView">
@@ -115,6 +117,7 @@
           <article class="panel surface form-panel"><div class="settings-title"><span>02</span><div><h3>Schedule behavior</h3><p>Use the frequent profile for Northeast winters and short trips.</p></div></div><label>Maintenance profile<select id="scheduleProfileInput"><option value="severe">Schedule 2 · more frequent</option><option value="normal">Schedule 1 · normal</option></select></label><label>Currency symbol<input id="currencyInput" type="text" maxlength="3"/></label><label>Tracking start mileage<input id="startMileageInput" type="number" min="0"/></label><label>“Due soon” window, miles<input id="dueSoonInput" type="number" min="0"/></label></article>
         </div>
         <article class="panel surface rules-panel"><div class="panel-header"><div><p class="eyebrow">Editable defaults</p><h3>Maintenance rules</h3></div><span class="muted-note">General starting points — verify against your owner’s manual</span></div><div id="scheduleRules" class="rules-grid"></div></article>
+        <article class="panel surface update-panel"><div><p class="eyebrow">Application updates</p><h3>Keep Roadbook current</h3><p id="updateStatus">Automatic update checks are available in the Windows app.</p></div><button class="secondary" id="checkUpdatesBtn">Check for updates</button></article>
       </section>
     </main>
   </div>
@@ -127,6 +130,8 @@
     <div class="welcome-choice"><label><input name="nextStep" type="radio" value="import" checked /><span><strong>Import my records</strong><small>Upload Carfax, PDF, TXT, or CSV next</small></span></label><label><input name="nextStep" type="radio" value="empty" /><span><strong>Start fresh</strong><small>Open an empty maintenance ledger</small></span></label></div>
     <div class="dialog-actions"><button type="button" class="ghost" id="useDemoBtn">Explore demo</button><button type="submit" class="primary">Create my roadbook</button></div>
   </form></dialog>
+
+  <dialog id="updateDialog"><div class="dialog-card update-dialog-card"><div class="dialog-header"><div><p class="eyebrow">Roadbook update</p><h3 id="updateDialogTitle">A new version is ready</h3></div><button type="button" class="icon-button" id="closeUpdateDialogBtn" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg></button></div><div class="update-dialog-body"><p>Here’s what changed:</p><pre id="updateNotes"></pre></div><div class="dialog-actions"><button type="button" class="ghost" id="laterUpdateBtn">Later</button><button type="button" class="primary" id="installUpdateBtn">Download and install</button></div></div></dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js?v=1.1.0"></script>

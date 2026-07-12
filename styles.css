@@ -98,6 +98,7 @@ button svg, .report-icon svg, .file-drop svg { width: 18px; height: 18px; fill: 
 .nav-item:hover { color: var(--text); background: rgba(127,137,151,.08); }
 .nav-item.active { color: var(--accent); background: var(--accent-soft); }
 .sidebar-footer { margin-top: auto; padding: 12px 6px 0; }
+.version-label { display: block; margin: 8px 0 0; color: var(--faint); font-size: .57rem; text-align: center; }
 .local-status { display: flex; align-items: center; gap: 9px; padding: 10px 9px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.25); }
 html[data-theme="dark"] .local-status { background: rgba(255,255,255,.025); }
 .local-status > span { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 4px var(--good-soft); }
@@ -262,6 +263,19 @@ tr:last-child td { border-bottom: 0; }
 .backup-panel { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 18px; margin-top: 14px; }
 .backup-panel h3 { margin: 0; }
 .backup-panel p { margin: 4px 0 0; color: var(--muted); font-size: .69rem; }
+.storage-panel { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 20px; margin-top: 14px; }
+.storage-panel > div:first-child { min-width: 0; }
+.storage-panel h3, .update-panel h3 { margin: 0; }
+.storage-panel p:not(.eyebrow), .update-panel p:not(.eyebrow) { max-width: 800px; margin: 6px 0 0; color: var(--muted); font-size: .69rem; line-height: 1.55; }
+.storage-paths { display: grid; gap: 6px; margin: 14px 0 0; }
+.storage-paths div { display: grid; grid-template-columns: 110px minmax(0,1fr); gap: 8px; }
+.storage-paths dt { color: var(--muted); font-size: .63rem; font-weight: 700; }
+.storage-paths dd { min-width: 0; margin: 0; overflow: hidden; color: var(--text-2); font-family: ui-monospace,SFMono-Regular,Consolas,monospace; font-size: .63rem; text-overflow: ellipsis; white-space: nowrap; }
+.update-panel { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 20px; margin-top: 14px; }
+.update-dialog-card { width: min(680px,calc(100vw - 28px)); }
+.update-dialog-body { padding: 18px 20px; }
+.update-dialog-body > p { margin: 0 0 10px; color: var(--muted); font-size: .7rem; }
+.update-dialog-body pre { max-height: 340px; margin: 0; overflow: auto; padding: 15px; border: 1px solid var(--line); border-radius: 13px; color: var(--text-2); background: rgba(127,137,151,.055); font: 500 .7rem/1.55 system-ui,sans-serif; white-space: pre-wrap; }
 
 .form-panel { display: grid; gap: 13px; align-content: start; padding: 20px; }
 .settings-title { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
@@ -330,6 +344,7 @@ dialog::backdrop { background: rgba(22,27,35,.42); backdrop-filter: blur(10px); 
   .nav-item { height: 47px; border-radius: 13px; }
   .workspace { padding: 14px 14px 92px; }
   .topbar, .section-toolbar { align-items: flex-start; flex-direction: column; }
+  .storage-panel, .update-panel { align-items: flex-start; flex-direction: column; }
   .topbar-actions { width: 100%; }
   .saved-pill { display: none; }
   .mileage-pill { flex: 1; }

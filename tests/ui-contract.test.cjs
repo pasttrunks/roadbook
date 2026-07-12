@@ -17,5 +17,9 @@ assert.match(html, /id="dueNowCount"/, 'The factual due-now indicator is missing
 assert.doesNotMatch(html, /id="healthScore"/, 'The deprecated opaque health score returned');
 assert.match(html, /id="exportHistoryCsvBtn"/, 'Full-history export is missing');
 assert.match(html, /id="vehicleVinInput"/, 'Flexible VIN/chassis field is missing');
+assert.match(html, /id="dataLocation"/, 'Visible desktop data location is missing');
+assert.match(html, /id="chooseBackupFolderBtn"/, 'Automatic backup-folder control is missing');
+assert.match(html, /id="checkUpdatesBtn"/, 'Manual update check is missing');
+assert.match(html, /id="updateNotes"/, 'Update overview is missing');
 
 console.log('UI contract regression test passed.');

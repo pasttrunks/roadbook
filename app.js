@@ -164,6 +164,9 @@ let state = loadState();
 let currentView = 'dashboard';
 let dialogMode = null;
 let editingId = null;
+let desktopHydrated = false;
+let desktopSaveTimer = null;
+let pendingUpdate = null;
 
 function loadState() {
   try {
@@ -172,21 +175,26 @@ function loadState() {
     const saved = currentSaved || legacySaved;
     if (!saved) return defaultState();
     const parsed = JSON.parse(saved);
-    const fresh = defaultState();
-    return {
-      ...fresh,
-      ...parsed,
-      vehicle: { ...fresh.vehicle, ...(parsed.vehicle || {}) },
-      services: mergeServices(parsed.services || []),
-      maintenance: Array.isArray(parsed.maintenance) ? parsed.maintenance : [],
-      expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
-      parsedDrafts: [],
-      onboardingComplete: currentSaved ? Boolean(parsed.onboardingComplete) : Boolean(legacySaved)
-    };
+    return normalizeState(parsed, currentSaved ? Boolean(parsed.onboardingComplete) : Boolean(legacySaved));
   } catch (error) {
     console.error(error);
     return defaultState();
   }
+}
+
+function normalizeState(value, onboardingFallback = false) {
+  const parsed = value && typeof value === 'object' ? value : {};
+  const fresh = defaultState();
+  return {
+    ...fresh,
+    ...parsed,
+    vehicle: { ...fresh.vehicle, ...(parsed.vehicle || {}) },
+    services: mergeServices(Array.isArray(parsed.services) ? parsed.services : []),
+    maintenance: Array.isArray(parsed.maintenance) ? parsed.maintenance : [],
+    expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
+    parsedDrafts: [],
+    onboardingComplete: parsed.onboardingComplete === undefined ? onboardingFallback : Boolean(parsed.onboardingComplete)
+  };
 }
 
 function mergeServices(savedServices) {
@@ -196,7 +204,14 @@ function mergeServices(savedServices) {
 }
 
 function saveState() {
-  localStorage.setItem(DB_KEY, JSON.stringify({ ...state, parsedDrafts: [] }));
+  const text = JSON.stringify({ ...state, parsedDrafts: [] });
+  localStorage.setItem(DB_KEY, text);
+  if (!desktopHydrated || !window.pywebview?.api?.save_state) return;
+  clearTimeout(desktopSaveTimer);
+  desktopSaveTimer = setTimeout(async () => {
+    const result = await window.pywebview.api.save_state(text);
+    if (!result?.ok) toast(result?.message || 'Roadbook could not save its desktop data file.');
+  }, 300);
 }
 
 function toast(message) {
@@ -994,15 +1009,7 @@ async function restoreJson(file) {
   if (!file) return;
   try {
     const restored = JSON.parse(await file.text());
-    state = {
-      ...defaultState(),
-      ...restored,
-      vehicle: { ...defaultState().vehicle, ...(restored.vehicle || {}) },
-      services: mergeServices(restored.services || []),
-      maintenance: Array.isArray(restored.maintenance) ? restored.maintenance : [],
-      expenses: Array.isArray(restored.expenses) ? restored.expenses : [],
-      parsedDrafts: []
-    };
+    state = normalizeState(restored, true);
     toast('Backup restored.');
     render();
   } catch (error) {
@@ -1058,6 +1065,101 @@ function toggleTheme() {
   localStorage.setItem('roadbook-theme', next);
   applyTheme(next);
   render();
+}
+
+async function initializeDesktopBridge() {
+  const api = window.pywebview?.api;
+  if (!api) return;
+  try {
+    const saved = await api.load_state();
+    if (saved?.ok && saved.exists) {
+      state = normalizeState(JSON.parse(saved.text), true);
+      localStorage.setItem(DB_KEY, JSON.stringify({ ...state, parsedDrafts: [] }));
+      if (state.onboardingComplete && $('#welcomeDialog').open) $('#welcomeDialog').close();
+    } else if (!saved?.ok) {
+      toast(saved?.message || 'Roadbook could not read its desktop data file.');
+      await refreshStorageInfo();
+      document.documentElement.dataset.desktopReady = 'error';
+      return;
+    }
+    desktopHydrated = true;
+    render();
+    await refreshStorageInfo();
+    document.documentElement.dataset.desktopReady = 'true';
+    setTimeout(() => checkForUpdates(true), 1200);
+  } catch (error) {
+    console.error(error);
+    toast('Roadbook could not initialize desktop storage. Browser storage remains available.');
+  }
+}
+
+async function refreshStorageInfo() {
+  const api = window.pywebview?.api;
+  if (!api?.get_storage_info) return;
+  const info = await api.get_storage_info();
+  if (!info?.ok) return;
+  $('#dataLocation').textContent = info.data_path;
+  $('#dataLocation').title = info.data_path;
+  $('#backupLocation').textContent = info.backup_path || 'Not configured — choose a synced or external folder';
+  $('#backupLocation').title = info.backup_path || '';
+  $('#appVersionLabel').textContent = `Roadbook v${info.version}`;
+  $('#updateStatus').textContent = `Installed version ${info.version}. Roadbook checks GitHub releases when it starts.`;
+}
+
+async function chooseBackupFolder() {
+  const result = await window.pywebview?.api?.choose_backup_folder();
+  if (result?.ok) {
+    await refreshStorageInfo();
+    toast('Automatic backup folder saved.');
+  } else if (!result?.cancelled) {
+    toast(result?.message || 'Could not configure the backup folder.');
+  }
+}
+
+async function checkForUpdates(silent = false) {
+  const api = window.pywebview?.api;
+  if (!api?.check_for_updates) {
+    if (!silent) toast('Update checks are available in the packaged Windows app.');
+    return;
+  }
+  if (!silent) {
+    $('#checkUpdatesBtn').disabled = true;
+    $('#checkUpdatesBtn').textContent = 'Checking…';
+  }
+  const result = await api.check_for_updates();
+  $('#checkUpdatesBtn').disabled = false;
+  $('#checkUpdatesBtn').textContent = 'Check for updates';
+  if (!result?.ok) {
+    if (!silent) toast(result?.message || 'Could not check for updates.');
+    return;
+  }
+  $('#updateStatus').textContent = result.available
+    ? `Version ${result.latest_version} is ready to install.`
+    : `Roadbook ${result.current_version} is up to date.`;
+  if (!result.available) {
+    if (!silent) toast(`Roadbook ${result.current_version} is up to date.`);
+    return;
+  }
+  pendingUpdate = result;
+  $('#updateDialogTitle').textContent = `Roadbook ${result.latest_version} is ready`;
+  $('#updateNotes').textContent = result.notes;
+  if (!$('#updateDialog').open) $('#updateDialog').showModal();
+}
+
+async function installPendingUpdate() {
+  if (!pendingUpdate) return;
+  const button = $('#installUpdateBtn');
+  button.disabled = true;
+  button.textContent = 'Downloading and verifying…';
+  const result = await window.pywebview.api.install_update(pendingUpdate.asset_url, pendingUpdate.digest);
+  if (!result?.ok) {
+    button.disabled = false;
+    button.textContent = 'Download and install';
+    toast(result?.message || 'The update could not be installed.');
+    return;
+  }
+  button.textContent = 'Restarting Roadbook…';
+  await window.pywebview.api.close_for_update();
 }
 
 function attachEvents() {
@@ -1156,6 +1258,15 @@ function attachEvents() {
   $('#quickExportBtn').addEventListener('click', exportJson);
   $('#exportCsvBtn').addEventListener('click', exportCsv);
   $('#exportHistoryCsvBtn').addEventListener('click', exportHistoryCsv);
+  $('#openDataFolderBtn').addEventListener('click', async () => {
+    const result = await window.pywebview?.api?.open_data_folder();
+    if (result && !result.ok) toast(result.message || 'Could not open the data folder.');
+  });
+  $('#chooseBackupFolderBtn').addEventListener('click', chooseBackupFolder);
+  $('#checkUpdatesBtn').addEventListener('click', () => checkForUpdates(false));
+  $('#closeUpdateDialogBtn').addEventListener('click', () => $('#updateDialog').close());
+  $('#laterUpdateBtn').addEventListener('click', () => $('#updateDialog').close());
+  $('#installUpdateBtn').addEventListener('click', installPendingUpdate);
   $('#restoreFile').addEventListener('change', event => restoreJson(event.target.files[0]));
   $('#resetDataBtn').addEventListener('click', () => {
     if (!confirm('Reset all saved car data in this browser? Export a backup first if you need it.')) return;
@@ -1182,3 +1293,4 @@ renderParsedResults();
 render();
 document.documentElement.dataset.appReady = 'true';
 if (!state.onboardingComplete) $('#welcomeDialog').showModal();
+window.addEventListener('pywebviewready', initializeDesktopBridge);
