@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Roadbook — Your vehicle, organized</title>
+  <link rel="icon" href="roadbook.png" />
+  <link rel="stylesheet" href="styles.css?v=1.0.0" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <div class="brand">
+        <div class="brand-mark"><img src="roadbook.png" alt="" /></div>
+        <div><h1>Roadbook</h1><p>Ownership ledger</p></div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="dashboard"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg><span>Overview</span></button>
+        <button class="nav-item" data-view="maintenance"><svg viewBox="0 0 24 24"><path d="m21.7 17.35-6.76-6.76a6 6 0 0 0-7.53-7.53l3.47 3.47-2.35 2.35-3.47-3.47a6 6 0 0 0 7.53 7.53l6.76 6.76a1.66 1.66 0 0 0 2.35-2.35Z"/></svg><span>Maintenance</span></button>
+        <button class="nav-item" data-view="expenses"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4V5Zm2 3v2h12V8H6Zm0 5v3h4v-3H6Zm6 0v1h6v-1h-6Zm0 2v1h5v-1h-5Z"/></svg><span>Expenses</span></button>
+        <button class="nav-item" data-view="carfax"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2Zm8 2v4h4l-4-4ZM9 12h8v-2H9v2Zm0 4h8v-2H9v2Zm0 4h6v-2H9v2Z"/></svg><span>Import records</span></button>
+        <button class="nav-item" data-view="reports"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2Zm2-2V9h3v8H6Zm5 0V4h3v13h-3Zm5 0v-6h3v6h-3Z"/></svg><span>Reports</span></button>
+        <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.07-.94l2.03-1.58-2-3.46-2.39.96a7.2 7.2 0 0 0-1.62-.94L14.8 3.5h-4l-.38 2.54c-.58.24-1.12.55-1.62.94l-2.38-.96-2 3.46 2.03 1.58c-.05.31-.08.64-.08.96 0 .31.03.62.08.92l-2.03 1.58 2 3.46 2.38-.96c.5.39 1.04.7 1.62.94l.38 2.54h4l.37-2.54c.59-.24 1.13-.55 1.63-.94l2.38.96 2-3.46-2.04-1.58ZM12.8 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg><span>Settings</span></button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="local-status"><span></span><div><strong>Local & private</strong><small>Saved on this device</small></div></div>
+        <div class="footer-buttons">
+          <button class="icon-button" id="quickExportBtn" title="Export backup"><svg viewBox="0 0 24 24"><path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 2.6 2.6V3h2ZM5 19h14v2H5v-2Z"/></svg></button>
+          <button class="icon-button" id="themeToggleBtn" title="Toggle appearance"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8c0-.27-.01-.54-.04-.8A6.2 6.2 0 0 1 12.8 4.04C12.54 4.01 12.27 4 12 4Z"/></svg></button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div><p class="eyebrow" id="todayLabel">Today</p><h2 id="pageTitle">Overview</h2></div>
+        <div class="topbar-actions">
+          <span class="saved-pill"><i></i>Saved locally</span>
+          <label class="mileage-pill" for="mileageInput"><span>Odometer</span><input id="mileageInput" type="number" min="0" step="1" value="147000" /><small>mi</small></label>
+          <button class="primary" id="addExpenseTopBtn"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>Add expense</button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboardView">
+        <article class="hero-card surface">
+          <div class="hero-copy">
+            <div class="hero-chips"><span id="vehicleIdentityChip">Your vehicle</span><span id="vehicleDetailChip">Ready when you are</span></div>
+            <h3 id="heroTitle">Your ownership, clearly organized.</h3>
+            <p id="heroSubtitle">Maintenance history, expenses, and upcoming service in one calm workspace.</p>
+            <div class="hero-actions"><button class="primary" id="heroLogServiceBtn">Log service</button><button class="ghost" data-jump="expenses">Open ledger</button></div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <svg class="car" viewBox="0 0 520 190"><path d="M47 115c7-19 20-29 39-31l43-5 47-43c9-9 21-14 34-14h102c20 0 38 8 51 23l32 36 67 18c19 5 32 22 32 42v10h-37c-3-25-23-44-49-44s-46 19-49 44H167c-3-25-23-44-49-44s-46 19-49 44H34v-16c0-7 5-15 13-20Z"/><circle cx="118" cy="151" r="31"/><circle cx="408" cy="151" r="31"/></svg>
+            <div class="health-ring"><svg viewBox="0 0 160 160"><circle cx="80" cy="80" r="62" class="meter-bg"/><circle cx="80" cy="80" r="62" class="meter-fill" id="healthMeter"/></svg><div><strong id="healthScore">—</strong><span>health</span></div></div>
+          </div>
+        </article>
+
+        <div class="stat-grid">
+          <article class="stat-card surface"><span>Total spent</span><strong id="totalSpent">$0.00</strong><small>all ownership expenses</small></article>
+          <article class="stat-card surface"><span>This month</span><strong id="monthSpent">$0.00</strong><small>current calendar month</small></article>
+          <article class="stat-card surface"><span>Overdue</span><strong id="overdueCount">0</strong><small>services need attention</small></article>
+          <article class="stat-card surface"><span>Cost per mile</span><strong id="costPerMile">$0.00</strong><small>since app tracking began</small></article>
+        </div>
+
+        <article class="sheet-panel surface">
+          <div class="panel-header"><div><p class="eyebrow">Maintenance queue</p><h3>Upcoming service</h3></div><button class="text-button" data-jump="maintenance">View full schedule</button></div>
+          <div class="sheet-labels"><span>Service</span><span>Status & interval</span><span>Action</span></div>
+          <div id="nextDueList" class="service-list compact"></div>
+        </article>
+
+        <div class="split-grid">
+          <article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Spending</p><h3 id="categoryChartTitle">Expense mix</h3></div></div><canvas id="categoryChart" width="680" height="300" aria-label="Expense category chart"></canvas></article>
+          <article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Timeline</p><h3>Recent activity</h3></div></div><div id="activityTimeline" class="timeline"></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="maintenanceView">
+        <div class="section-toolbar"><div><p class="eyebrow">Service workspace</p><h3>Maintenance</h3><p>What is due, what is done, and what the report never confirmed.</p></div><div class="toolbar-actions"><button class="ghost" id="addCustomServiceBtn">New schedule item</button><button class="secondary" id="addMaintenanceBtn">Log service</button></div></div>
+        <div class="control-strip surface"><div class="hint"><strong>Schedule 2</strong><span>Selected for short trips, winter salt, wet conditions, and harder use.</span></div><select id="statusFilter" aria-label="Filter maintenance by status"><option value="all">All statuses</option><option value="overdue">Overdue</option><option value="soon">Due soon</option><option value="ok">On track</option><option value="unknown">Needs history</option></select></div>
+        <article class="sheet-panel surface maintenance-sheet"><div class="sheet-labels maintenance-labels"><span>Service item</span><span>Schedule / last record / next due</span><span>Actions</span></div><div id="maintenanceList" class="service-list"></div></article>
+        <article class="sheet-panel surface history-panel"><div class="panel-header"><div><p class="eyebrow">Imported & manual</p><h3>Service history</h3></div><span class="muted-note">Latest records first</span></div><div class="table-wrap history-table-wrap"><table><thead><tr><th>Date</th><th>Mileage</th><th>Service</th><th>Source</th><th>Cost</th><th>Notes</th></tr></thead><tbody id="maintenanceHistoryRows"></tbody></table></div></article>
+      </section>
+
+      <section class="view" id="expensesView">
+        <div class="section-toolbar"><div><p class="eyebrow">Cost of ownership</p><h3>Expense ledger</h3><p>A spreadsheet-style ledger without the visual clutter.</p></div><button class="secondary" id="addExpenseBtn">Add expense</button></div>
+        <div class="control-strip surface"><input id="expenseSearch" type="search" placeholder="Search vendor, note, category, amount…"/><button class="ghost" id="exportCsvInlineBtn">Export CSV</button></div>
+        <div class="table-wrap surface"><table><thead><tr><th>Date</th><th>Category</th><th>Vendor</th><th>Mileage</th><th>Amount</th><th>Notes</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
+      </section>
+
+      <section class="view" id="carfaxView">
+        <div class="section-toolbar"><div><p class="eyebrow">History intake</p><h3>Import records</h3><p>Bring in a Carfax report, shop log, spreadsheet, or pasted service history.</p></div></div>
+        <article class="report-banner surface"><div class="report-icon"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5V3Zm9 2v3h3l-3-3Zm-6 7h8v-2H8v2Zm0 4h8v-2H8v2Zm0 3h5v-2H8v2Z"/></svg></div><div><strong>Your records stay on this device</strong><p>Roadbook finds possible service events, then lets you review every match before saving.</p></div><button class="ghost" id="loadDemoBtn">Try sample data</button></article>
+        <div class="import-grid">
+          <article class="panel surface import-card"><div class="step">1</div><h3>Add your records</h3><p>Upload a text-based PDF, TXT, or CSV, or paste service-history text below.</p><label class="file-drop" for="carfaxFile"><input id="carfaxFile" type="file" accept=".pdf,.txt,.csv,.json,text/plain,application/pdf"/><svg viewBox="0 0 24 24"><path d="M11 16V7.8L8.4 10.4 7 9l5-5 5 5-1.4 1.4L13 7.8V16h-2ZM5 18h14v2H5v-2Z"/></svg><span>Choose a file</span><small>Carfax PDF, service log, TXT, or CSV</small></label><textarea id="carfaxText" rows="10" placeholder="Or paste service dates, mileage, and work performed…"></textarea><div class="button-row"><button class="secondary" id="parseCarfaxBtn">Find service records</button><button class="ghost" id="clearImportBtn">Clear</button></div><p class="small-muted" id="importStatus"></p></article>
+          <article class="panel surface import-card"><div class="step">2</div><h3>Review matches</h3><p>Nothing is imported blindly. Check the date, mileage, and service before saving.</p><div id="parsedResults" class="parsed-results"></div><div class="button-row sticky-actions"><button class="primary" id="importParsedBtn">Import selected</button><button class="ghost" id="selectAllParsedBtn">Select all</button></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="reportsView">
+        <div class="section-toolbar"><div><p class="eyebrow">Decision support</p><h3>Reports</h3><p>See where the money went and what the car is asking for next.</p></div><div class="toolbar-actions"><button class="secondary" id="exportJsonBtn">Export backup</button><button class="ghost" id="exportCsvBtn">Export CSV</button></div></div>
+        <div class="split-grid reports-grid"><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Snapshot</p><h3>Ownership summary</h3></div></div><div id="reportSummary" class="summary-stack"></div></article><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Trend</p><h3 id="monthlyChartTitle">Monthly spending</h3></div></div><canvas id="monthlyChart" width="680" height="300"></canvas></article></div>
+        <article class="panel surface backup-panel"><div><h3>Backup & restore</h3><p>Export a JSON backup before switching computers or clearing app data.</p></div><div class="button-row"><label class="secondary file-button" for="restoreFile">Restore JSON<input id="restoreFile" type="file" accept="application/json,.json"/></label><button class="danger" id="resetDataBtn">Reset app data</button></div></article>
+      </section>
+
+      <section class="view" id="settingsView">
+        <div class="section-toolbar"><div><p class="eyebrow">Preferences</p><h3>Settings</h3><p>Keep reminders aligned with your vehicle and how you drive it.</p></div><button class="primary" id="saveSettingsBtn">Save changes</button></div>
+        <div class="settings-grid">
+          <article class="panel surface form-panel"><div class="settings-title"><span>01</span><div><h3>Vehicle profile</h3><p>Identity and drivetrain affect the schedule.</p></div></div><label>Nickname<input id="vehicleNameInput" type="text"/></label><label>Year<input id="vehicleYearInput" type="number"/></label><label>Make<input id="vehicleMakeInput" type="text"/></label><label>Model<input id="vehicleModelInput" type="text"/></label><label>Trim / engine<input id="vehicleTrimInput" type="text" placeholder="Grand Touring · 2.5L"/></label><label>Drivetrain<select id="drivetrainInput"><option value="unknown">Unknown</option><option value="FWD">FWD</option><option value="AWD">AWD</option></select></label></article>
+          <article class="panel surface form-panel"><div class="settings-title"><span>02</span><div><h3>Schedule behavior</h3><p>Use the frequent profile for Northeast winters and short trips.</p></div></div><label>Maintenance profile<select id="scheduleProfileInput"><option value="severe">Schedule 2 · more frequent</option><option value="normal">Schedule 1 · normal</option></select></label><label>Currency symbol<input id="currencyInput" type="text" maxlength="3"/></label><label>Tracking start mileage<input id="startMileageInput" type="number" min="0"/></label><label>“Due soon” window, miles<input id="dueSoonInput" type="number" min="0"/></label></article>
+        </div>
+        <article class="panel surface rules-panel"><div class="panel-header"><div><p class="eyebrow">Editable defaults</p><h3>Maintenance rules</h3></div><span class="muted-note">General starting points — verify against your owner’s manual</span></div><div id="scheduleRules" class="rules-grid"></div></article>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="entryDialog"><form method="dialog" id="entryForm" class="dialog-card"><div class="dialog-header"><div><p class="eyebrow">New entry</p><h3 id="dialogTitle">Add entry</h3></div><button type="button" class="icon-button" id="closeDialogBtn" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg></button></div><div id="dialogFields" class="dialog-fields"></div><div class="dialog-actions"><button type="button" class="ghost" id="cancelDialogBtn">Cancel</button><button type="submit" class="primary">Save</button></div></form></dialog>
+
+  <dialog id="welcomeDialog"><form method="dialog" id="welcomeForm" class="dialog-card welcome-card">
+    <div class="welcome-intro"><div class="brand-mark"><img src="roadbook.png" alt="" /></div><p class="eyebrow">Welcome to Roadbook</p><h3>Start with your vehicle.</h3><p>Add the basics now. Next, import a Carfax or service log, or begin with an empty ledger.</p></div>
+    <div class="dialog-fields welcome-fields"><label>Year<input name="year" type="number" min="1900" max="2100" placeholder="2019" required /></label><label>Make<input name="make" type="text" placeholder="Toyota" required /></label><label>Model<input name="model" type="text" placeholder="RAV4" required /></label><label>Trim / engine<input name="trim" type="text" placeholder="XLE · 2.5L" /></label><label>Current odometer<input name="mileage" type="number" min="0" placeholder="42500" required /></label><label>Drivetrain<select name="drivetrain"><option value="unknown">Not sure</option><option value="FWD">FWD</option><option value="RWD">RWD</option><option value="AWD">AWD / 4WD</option></select></label></div>
+    <div class="welcome-choice"><label><input name="nextStep" type="radio" value="import" checked /><span><strong>Import my records</strong><small>Upload Carfax, PDF, TXT, or CSV next</small></span></label><label><input name="nextStep" type="radio" value="empty" /><span><strong>Start fresh</strong><small>Open an empty maintenance ledger</small></span></label></div>
+    <div class="dialog-actions"><button type="button" class="ghost" id="useDemoBtn">Explore demo</button><button type="submit" class="primary">Create my roadbook</button></div>
+  </form></dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js?v=1.0.0"></script>
+</body>
+</html>

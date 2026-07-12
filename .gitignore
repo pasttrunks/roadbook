@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Build outputs
+build/
+dist/
+work/
+*.spec
+
+# Private source reports (sample events are already represented in app.js)
+carfaxmazdacx52015.pdf
+
+# Local OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
