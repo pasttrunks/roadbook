@@ -86,7 +86,7 @@ After running setup once:
 build_windows.bat
 ```
 
-The packaged application is created at `dist\Roadbook\Roadbook.exe`. GitHub Actions runs the same packaging process for version tags and publishes the complete folder as `Roadbook-Windows.zip`.
+The packaged application is created at `dist\Roadbook\Roadbook.exe`. GitHub Actions runs the same packaging process, launch-tests the packaged interface, and publishes the complete folder as `Roadbook-Windows.zip` for version tags.
 
 ## Project structure
 

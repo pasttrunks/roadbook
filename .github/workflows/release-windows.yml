@@ -39,6 +39,26 @@ jobs:
             --add-data "roadbook.png;." `
             desktop_app.py
 
+      - name: Launch-test packaged application
+        shell: pwsh
+        run: |
+          $env:ROADBOOK_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-smoke-ok.txt"
+          $process = Start-Process -FilePath "dist\Roadbook\Roadbook.exe" `
+            -ArgumentList "--smoke-test" -PassThru
+
+          if (-not $process.WaitForExit(30000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Packaged Roadbook did not complete its smoke test within 30 seconds."
+          }
+
+          if ($process.ExitCode -ne 0) {
+            throw "Packaged Roadbook exited with code $($process.ExitCode)."
+          }
+
+          if (-not (Test-Path $env:ROADBOOK_SMOKE_FILE)) {
+            throw "Packaged Roadbook never reached the loaded interface."
+          }
+
       - name: Package Windows download
         shell: pwsh
         run: Compress-Archive -Path dist\Roadbook -DestinationPath Roadbook-Windows.zip

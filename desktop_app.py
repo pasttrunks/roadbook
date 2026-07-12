@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import os
 from typing import Any
 
 import webview
@@ -102,9 +104,10 @@ def start_server() -> tuple[ThreadingHTTPServer, str]:
 
 
 def main() -> None:
+    smoke_test = "--smoke-test" in sys.argv
     server, url = start_server()
     try:
-        webview.create_window(
+        window = webview.create_window(
             "Roadbook — Your vehicle, organized",
             url,
             js_api=DesktopApi(),
@@ -114,7 +117,27 @@ def main() -> None:
             background_color="#edf0f5",
             text_select=True,
         )
+
+        smoke_file = Path(
+            os.environ.get(
+                "ROADBOOK_SMOKE_FILE",
+                str(Path(tempfile.gettempdir()) / "roadbook-smoke-ok.txt"),
+            )
+        )
+
+        if smoke_test:
+            smoke_file.unlink(missing_ok=True)
+
+            def confirm_loaded() -> None:
+                smoke_file.write_text("Roadbook loaded successfully.\n", encoding="utf-8")
+                window.destroy()
+
+            window.events.loaded += confirm_loaded
+
         webview.start(debug=False)
+
+        if smoke_test and not smoke_file.exists():
+            raise RuntimeError("Roadbook smoke test ended before the interface loaded")
     finally:
         server.shutdown()
         server.server_close()
