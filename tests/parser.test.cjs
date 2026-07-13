@@ -27,7 +27,8 @@ vm.runInContext(
   `${source.slice(0, startupIndex)}\n` +
   'globalThis.__parseCarfaxText = parseCarfaxText;\n' +
   'globalThis.__calculateFuelEconomy = calculateFuelEconomy;\n' +
-  'globalThis.__buildHistoryCsv = buildHistoryCsv;',
+  'globalThis.__buildHistoryCsv = buildHistoryCsv;\n' +
+  'globalThis.__calculateMarketValue = calculateMarketValue;',
   sandbox,
   { filename: appPath }
 );
@@ -63,5 +64,10 @@ const historyCsv = sandbox.__buildHistoryCsv({
 assert.match(historyCsv, /"VIN or chassis number","5F09A"/);
 assert.match(historyCsv, /"Service","2026-02-01","50000","Engine","Oil change","DIY","45","Oil, filter"/);
 assert.match(historyCsv, /"Fuel","2026-02-02","50100","Fuel","Fuel","Station","40","10 gallons, full fill-up"/);
+
+const market = sandbox.__calculateMarketValue([
+  { price: 14000 }, { price: 12000 }, { price: 15000 }, { price: 13000 }
+]);
+assert.deepEqual(JSON.parse(JSON.stringify(market)), { count: 4, median: 13500, low: 12000, high: 15000 });
 
 console.log('Parser, fuel-economy, and history-export regression tests passed.');

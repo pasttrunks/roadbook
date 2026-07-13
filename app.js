@@ -149,6 +149,7 @@ const defaultState = () => ({
   services: structuredClone(defaultServices),
   maintenance: [],
   expenses: [],
+  valuation: { zip: '', purchasePrice: 0, purchaseDate: '', comparables: [] },
   parsedDrafts: [],
   onboardingComplete: false
 });
@@ -192,6 +193,11 @@ function normalizeState(value, onboardingFallback = false) {
     services: mergeServices(Array.isArray(parsed.services) ? parsed.services : []),
     maintenance: Array.isArray(parsed.maintenance) ? parsed.maintenance : [],
     expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
+    valuation: {
+      ...fresh.valuation,
+      ...(parsed.valuation || {}),
+      comparables: Array.isArray(parsed.valuation?.comparables) ? parsed.valuation.comparables : []
+    },
     parsedDrafts: [],
     onboardingComplete: parsed.onboardingComplete === undefined ? onboardingFallback : Boolean(parsed.onboardingComplete)
   };
@@ -335,6 +341,7 @@ function render() {
   renderDashboard();
   renderMaintenance();
   renderExpenses();
+  renderValuation();
   renderReports();
   renderSettings();
 }
@@ -478,6 +485,53 @@ function calculateFuelEconomy(expenses) {
   };
 }
 
+function calculateMarketValue(comparables) {
+  const valid = comparables.filter(item => Number(item.price || 0) > 0).sort((a, b) => Number(a.price) - Number(b.price));
+  if (!valid.length) return { count: 0, median: 0, low: 0, high: 0 };
+  const prices = valid.map(item => Number(item.price));
+  const middle = Math.floor(prices.length / 2);
+  const median = prices.length % 2 ? prices[middle] : (prices[middle - 1] + prices[middle]) / 2;
+  return { count: valid.length, median, low: prices[0], high: prices[prices.length - 1] };
+}
+
+function renderValuation() {
+  const valuation = state.valuation || defaultState().valuation;
+  const snapshot = calculateMarketValue(valuation.comparables || []);
+  const vehicleName = [state.vehicle.year, state.vehicle.make, state.vehicle.model, state.vehicle.trim].filter(Boolean).join(' ') || 'Your vehicle';
+  $('#valueVehicleName').textContent = vehicleName;
+  $('#valueZipInput').value = valuation.zip || '';
+  $('#purchasePriceInput').value = valuation.purchasePrice || '';
+  $('#purchaseDateInput').value = valuation.purchaseDate || '';
+  $('#estimatedValue').textContent = snapshot.median ? money(snapshot.median) : '—';
+  $('#valueRange').textContent = snapshot.count ? `${money(snapshot.low)} to ${money(snapshot.high)} asking-price range` : 'Add at least three similar listings';
+  $('#comparableCount').textContent = snapshot.count;
+  $('#lowestComparable').textContent = snapshot.low ? money(snapshot.low) : '—';
+  $('#highestComparable').textContent = snapshot.high ? money(snapshot.high) : '—';
+  $('#valueConfidence').textContent = snapshot.count >= 5 ? 'Strong sample · verify trim, mileage, and condition' : snapshot.count >= 3 ? 'Useful early sample · add more listings for confidence' : `${snapshot.count} of 3 minimum comparables`;
+  $('#valueMeterFill').style.width = `${Math.min(100, snapshot.count * 20)}%`;
+
+  const purchasePrice = Number(valuation.purchasePrice || 0);
+  if (snapshot.median && purchasePrice) {
+    const change = snapshot.median - purchasePrice;
+    const percent = purchasePrice ? (change / purchasePrice) * 100 : 0;
+    $('#valueChange').textContent = `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}`;
+    $('#valueChangeDetail').textContent = `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}% versus purchase price`;
+  } else {
+    $('#valueChange').textContent = '—';
+    $('#valueChangeDetail').textContent = 'add purchase price';
+  }
+
+  const rows = [...(valuation.comparables || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  $('#comparableRows').innerHTML = rows.map(item => `
+    <tr>
+      <td>${fmtDate(item.date)}</td><td><strong>${escapeHTML(item.vehicle || vehicleName)}</strong></td>
+      <td>${item.mileage ? `${miles(item.mileage)} mi` : '—'}</td><td><strong>${money(item.price)}</strong></td>
+      <td>${item.url ? `<button class="text-button" data-action="open-comparable" data-comparable-id="${item.id}">${escapeHTML(item.source || 'Listing')}</button>` : escapeHTML(item.source || 'Listing')}</td>
+      <td>${escapeHTML(item.notes || '')}</td>
+      <td><div class="action-cell"><button class="tiny-button" data-action="edit-comparable" data-comparable-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-comparable" data-comparable-id="${item.id}">Delete</button></div></td>
+    </tr>`).join('') || '<tr><td colspan="7">No comparable listings yet. Research the live market, then save three or more similar vehicles.</td></tr>';
+}
+
 function renderTimeline() {
   const activities = [
     ...state.maintenance.map(item => ({ type: 'Service', date: item.date, mileage: item.mileage, title: serviceName(item.serviceId), notes: item.notes, amount: item.amount })),
@@ -569,7 +623,8 @@ function openDialog(mode, payload = {}) {
     expense: editingId ? 'Edit expense' : 'Add expense',
     maintenance: editingId ? 'Edit service record' : 'Log service',
     service: 'Edit service schedule',
-    customService: 'Add custom service'
+    customService: 'Add custom service',
+    comparable: editingId ? 'Edit comparable listing' : 'Add comparable listing'
   };
   $('#dialogTitle').textContent = titleMap[mode] || 'Add entry';
   $('#dialogFields').innerHTML = dialogFields(mode, payload);
@@ -577,6 +632,19 @@ function openDialog(mode, payload = {}) {
 }
 
 function dialogFields(mode, payload) {
+  if (mode === 'comparable') {
+    const item = payload.item || {};
+    const vehicle = [state.vehicle.year, state.vehicle.make, state.vehicle.model, state.vehicle.trim].filter(Boolean).join(' ');
+    return `
+      <label>Date seen<input name="date" type="date" value="${item.date || todayISO()}" required /></label>
+      <label>Asking price<input name="price" type="number" min="1" step="100" value="${item.price || ''}" required /></label>
+      <label>Vehicle<input name="vehicle" type="text" value="${escapeAttr(item.vehicle || vehicle)}" placeholder="Year make model trim" required /></label>
+      <label>Mileage<input name="mileage" type="number" min="0" step="1" value="${item.mileage || ''}" /></label>
+      <label>Source<input name="source" type="text" value="${escapeAttr(item.source || 'Visor')}" placeholder="Visor, dealer, Cars.com…" /></label>
+      <label>Listing URL<input name="url" type="url" value="${escapeAttr(item.url || '')}" placeholder="https://…" /></label>
+      <label>Notes<textarea name="notes" rows="3" placeholder="Condition, drivetrain, options, location…">${escapeHTML(item.notes || '')}</textarea></label>
+    `;
+  }
   if (mode === 'expense') {
     const item = payload.item || {};
     const category = item.category || 'Maintenance';
@@ -638,6 +706,12 @@ function dialogFields(mode, payload) {
 function saveDialog(event) {
   event.preventDefault();
   const form = new FormData($('#entryForm'));
+  if (dialogMode === 'comparable') {
+    const record = { id: editingId || uid(), date: form.get('date'), price: Number(form.get('price') || 0), vehicle: form.get('vehicle') || '', mileage: Number(form.get('mileage') || 0), source: form.get('source') || '', url: form.get('url') || '', notes: form.get('notes') || '' };
+    const index = state.valuation.comparables.findIndex(item => item.id === editingId);
+    if (index >= 0) state.valuation.comparables[index] = record; else state.valuation.comparables.push(record);
+    toast(index >= 0 ? 'Comparable updated.' : 'Comparable added.');
+  }
   if (dialogMode === 'expense') {
     const record = {
       id: editingId || uid(), date: form.get('date'), category: form.get('category'), vendor: form.get('vendor'),
@@ -1162,6 +1236,50 @@ async function installPendingUpdate() {
   await window.pywebview.api.close_for_update();
 }
 
+async function openExternalUrl(url) {
+  if (window.pywebview?.api?.open_external_url) {
+    const result = await window.pywebview.api.open_external_url(url);
+    if (!result?.ok) toast(result?.message || 'Could not open that link.');
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+
+async function decodeSavedVin() {
+  if (!state.vehicle.vin) {
+    toast('Add the 17-character VIN in Settings first.');
+    showView('settings');
+    return;
+  }
+  const button = $('#decodeVinBtn');
+  button.disabled = true;
+  button.textContent = 'Decoding…';
+  const result = await window.pywebview?.api?.decode_vin(state.vehicle.vin);
+  button.disabled = false;
+  button.textContent = 'Decode saved VIN';
+  if (!result?.ok) {
+    toast(result?.message || 'VIN lookup is available in the Windows app.');
+    return;
+  }
+  state.vehicle = {
+    ...state.vehicle,
+    year: Number(result.year || state.vehicle.year || 0),
+    make: result.make || state.vehicle.make,
+    model: result.model || state.vehicle.model,
+    trim: result.trim || state.vehicle.trim,
+    vin: result.vin
+  };
+  $('#decodedVehicleDetails').textContent = [result.body, result.drive_type].filter(Boolean).join(' · ') || 'VIN decoded by NHTSA.';
+  toast('Vehicle details decoded with NHTSA.');
+  render();
+}
+
+function marketOverviewUrl() {
+  const clean = value => String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!state.vehicle.make || !state.vehicle.model) return 'https://visor.vin/overview';
+  return `https://visor.vin/overview/${encodeURIComponent(clean(state.vehicle.make))}/${encodeURIComponent(clean(state.vehicle.model))}`;
+}
+
 function attachEvents() {
   $$('.nav-item').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
   $$('[data-jump]').forEach(button => button.addEventListener('click', () => showView(button.dataset.jump)));
@@ -1172,6 +1290,7 @@ function attachEvents() {
   });
 
   $('#addExpenseBtn').addEventListener('click', () => openDialog('expense'));
+  $('#addComparableBtn').addEventListener('click', () => openDialog('comparable'));
   $('#addExpenseTopBtn').addEventListener('click', () => openDialog('expense'));
   $('#addMaintenanceBtn').addEventListener('click', () => openDialog('maintenance'));
   $('#heroLogServiceBtn')?.addEventListener('click', () => openDialog('maintenance'));
@@ -1185,6 +1304,11 @@ function attachEvents() {
   $('#statusFilter').addEventListener('change', renderMaintenance);
   $('#maintenanceHistorySearch').addEventListener('input', renderMaintenance);
   $('#expenseSearch').addEventListener('input', renderExpenses);
+  $('#valueZipInput').addEventListener('change', event => { state.valuation.zip = event.target.value.trim(); render(); });
+  $('#purchasePriceInput').addEventListener('change', event => { state.valuation.purchasePrice = Number(event.target.value || 0); render(); });
+  $('#purchaseDateInput').addEventListener('change', event => { state.valuation.purchaseDate = event.target.value; render(); });
+  $('#decodeVinBtn').addEventListener('click', decodeSavedVin);
+  $('#openMarketResearchBtn').addEventListener('click', () => openExternalUrl(marketOverviewUrl()));
   $('#entryForm').addEventListener('submit', saveDialog);
   $('#entryForm').addEventListener('change', event => {
     if (event.target.name !== 'category') return;
@@ -1222,6 +1346,20 @@ function attachEvents() {
       state.maintenance = state.maintenance.filter(item => item.id !== actionEl.dataset.recordId);
       toast('Service record deleted.');
       render();
+    }
+    if (action === 'edit-comparable') {
+      const item = state.valuation.comparables.find(record => record.id === actionEl.dataset.comparableId);
+      if (item) openDialog('comparable', { id: item.id, item });
+    }
+    if (action === 'delete-comparable') {
+      if (!confirm('Delete this comparable listing?')) return;
+      state.valuation.comparables = state.valuation.comparables.filter(item => item.id !== actionEl.dataset.comparableId);
+      toast('Comparable deleted.');
+      render();
+    }
+    if (action === 'open-comparable') {
+      const item = state.valuation.comparables.find(record => record.id === actionEl.dataset.comparableId);
+      if (item?.url) openExternalUrl(item.url);
     }
   });
 
@@ -1283,7 +1421,7 @@ function showView(view) {
   currentView = view;
   $$('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.view === view));
   $$('.view').forEach(section => section.classList.toggle('active', section.id === `${view}View`));
-  $('#pageTitle').textContent = ({ dashboard: 'Overview', maintenance: 'Maintenance', expenses: 'Expenses', carfax: 'Import records', reports: 'Reports', settings: 'Settings' })[view] || 'Overview';
+  $('#pageTitle').textContent = ({ dashboard: 'Overview', maintenance: 'Maintenance', expenses: 'Expenses', value: 'My car value', carfax: 'Import records', reports: 'Reports', settings: 'Settings' })[view] || 'Overview';
   requestAnimationFrame(render);
 }
 

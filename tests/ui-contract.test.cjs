@@ -21,5 +21,7 @@ assert.match(html, /id="dataLocation"/, 'Visible desktop data location is missin
 assert.match(html, /id="chooseBackupFolderBtn"/, 'Automatic backup-folder control is missing');
 assert.match(html, /id="checkUpdatesBtn"/, 'Manual update check is missing');
 assert.match(html, /id="updateNotes"/, 'Update overview is missing');
+assert.match(html, /id="estimatedValue"/, 'Market-value estimate is missing');
+assert.match(html, /id="comparableRows"/, 'Comparable-listing evidence is missing');
 
 console.log('UI contract regression test passed.');

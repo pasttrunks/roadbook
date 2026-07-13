@@ -21,6 +21,8 @@ Roadbook turns scattered vehicle paperwork into a useful ownership record. Add a
 - Search, edit, or remove imported and manually entered service records.
 - Export JSON backups, expense CSVs, or a complete shareable vehicle history.
 - Keep an optional VIN or chassis number of any length, including classic vehicles.
+- Build a private market-value snapshot from comparable listings and track depreciation from the purchase price.
+- Decode modern VINs with NHTSA and open matching public Visor market research without a paid valuation API.
 - Light and dark themes with a responsive desktop interface.
 - Local-only storage by default.
 

@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light dark" />
   <title>Roadbook — Your vehicle, organized</title>
   <link rel="icon" href="roadbook.png" />
-  <link rel="stylesheet" href="styles.css?v=1.1.0" />
+  <link rel="stylesheet" href="styles.css?v=1.2.0" />
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -23,6 +23,7 @@
         <button class="nav-item active" data-view="dashboard"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z"/></svg><span>Overview</span></button>
         <button class="nav-item" data-view="maintenance"><svg viewBox="0 0 24 24"><path d="m21.7 17.35-6.76-6.76a6 6 0 0 0-7.53-7.53l3.47 3.47-2.35 2.35-3.47-3.47a6 6 0 0 0 7.53 7.53l6.76 6.76a1.66 1.66 0 0 0 2.35-2.35Z"/></svg><span>Maintenance</span></button>
         <button class="nav-item" data-view="expenses"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4V5Zm2 3v2h12V8H6Zm0 5v3h4v-3H6Zm6 0v1h6v-1h-6Zm0 2v1h5v-1h-5Z"/></svg><span>Expenses</span></button>
+        <button class="nav-item" data-view="value"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2Zm1-3 4-4 3 3 6-7 1.5 1.3-7.4 8.7-3.1-3-2.6 2.6L5 16Zm1-9h4V5H6v2Z"/></svg><span>My car value</span></button>
         <button class="nav-item" data-view="carfax"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6V2Zm8 2v4h4l-4-4ZM9 12h8v-2H9v2Zm0 4h8v-2H9v2Zm0 4h6v-2H9v2Z"/></svg><span>Import records</span></button>
         <button class="nav-item" data-view="reports"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2Zm2-2V9h3v8H6Zm5 0V4h3v13h-3Zm5 0v-6h3v6h-3Z"/></svg><span>Reports</span></button>
         <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.07-.94l2.03-1.58-2-3.46-2.39.96a7.2 7.2 0 0 0-1.62-.94L14.8 3.5h-4l-.38 2.54c-.58.24-1.12.55-1.62.94l-2.38-.96-2 3.46 2.03 1.58c-.05.31-.08.64-.08.96 0 .31.03.62.08.92l-2.03 1.58 2 3.46 2.38-.96c.5.39 1.04.7 1.62.94l.38 2.54h4l.37-2.54c.59-.24 1.13-.55 1.63-.94l2.38.96 2-3.46-2.04-1.58ZM12.8 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg><span>Settings</span></button>
@@ -94,6 +95,17 @@
         <div class="table-wrap surface"><table><thead><tr><th>Date</th><th>Category</th><th>Vendor</th><th>Mileage</th><th>Amount</th><th>Notes</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
       </section>
 
+      <section class="view" id="valueView">
+        <div class="section-toolbar"><div><p class="eyebrow">Market snapshot</p><h3>My car value</h3><p>A transparent estimate based on comparable listings you choose—not a paid or hidden appraisal API.</p></div><button class="secondary" id="addComparableBtn">Add comparable</button></div>
+        <div class="value-grid">
+          <article class="panel surface value-summary"><p class="eyebrow">Comparable median</p><strong id="estimatedValue">—</strong><span id="valueRange">Add at least three similar listings</span><div class="value-meter"><i id="valueMeterFill"></i></div><small id="valueConfidence">No market sample yet</small></article>
+          <article class="panel surface value-setup"><div><p class="eyebrow">Vehicle match</p><h3 id="valueVehicleName">Your vehicle</h3><p id="decodedVehicleDetails">Use your saved vehicle details or decode a 17-character VIN with NHTSA.</p></div><div class="value-fields"><label>ZIP code<input id="valueZipInput" inputmode="numeric" maxlength="10" placeholder="13413" /></label><label>Purchase price<input id="purchasePriceInput" type="number" min="0" step="100" placeholder="Optional" /></label><label>Purchase date<input id="purchaseDateInput" type="date" /></label></div><div class="button-row"><button class="ghost" id="decodeVinBtn">Decode saved VIN</button><button class="primary" id="openMarketResearchBtn">Research live market</button></div></article>
+        </div>
+        <div class="stat-grid value-stats"><article class="stat-card surface"><span>Comparable listings</span><strong id="comparableCount">0</strong><small>your saved market sample</small></article><article class="stat-card surface"><span>Lowest listing</span><strong id="lowestComparable">—</strong><small>asking price</small></article><article class="stat-card surface"><span>Highest listing</span><strong id="highestComparable">—</strong><small>asking price</small></article><article class="stat-card surface"><span>Since purchase</span><strong id="valueChange">—</strong><small id="valueChangeDetail">add purchase price</small></article></div>
+        <article class="sheet-panel surface"><div class="panel-header"><div><p class="eyebrow">Evidence</p><h3>Comparable listings</h3></div><span class="muted-note">Use the same year, trim, condition, and similar mileage</span></div><div class="table-wrap history-table-wrap"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Mileage</th><th>Price</th><th>Source</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="comparableRows"></tbody></table></div></article>
+        <p class="value-disclaimer">Market snapshot only—not a certified appraisal or guaranteed sale price. Asking prices can differ from completed sales. Verify listings and vehicle condition before making a financial decision.</p>
+      </section>
+
       <section class="view" id="carfaxView">
         <div class="section-toolbar"><div><p class="eyebrow">History intake</p><h3>Import records</h3><p>Bring in a Carfax report, shop log, spreadsheet, or pasted service history.</p></div></div>
         <article class="report-banner surface"><div class="report-icon"><svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5V3Zm9 2v3h3l-3-3Zm-6 7h8v-2H8v2Zm0 4h8v-2H8v2Zm0 3h5v-2H8v2Z"/></svg></div><div><strong>Your records stay on this device</strong><p>Roadbook finds possible service events, then lets you review every match before saving.</p></div><button class="ghost" id="loadDemoBtn">Try sample data</button></article>
@@ -134,6 +146,6 @@
   <dialog id="updateDialog"><div class="dialog-card update-dialog-card"><div class="dialog-header"><div><p class="eyebrow">Roadbook update</p><h3 id="updateDialogTitle">A new version is ready</h3></div><button type="button" class="icon-button" id="closeUpdateDialogBtn" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg></button></div><div class="update-dialog-body"><p>Here’s what changed:</p><pre id="updateNotes"></pre></div><div class="dialog-actions"><button type="button" class="ghost" id="laterUpdateBtn">Later</button><button type="button" class="primary" id="installUpdateBtn">Download and install</button></div></div></dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=1.1.0"></script>
+  <script src="app.js?v=1.2.0"></script>
 </body>
 </html>

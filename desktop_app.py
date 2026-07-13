@@ -4,10 +4,15 @@ import sys
 import subprocess
 import tempfile
 import threading
+import json
+import re
+import urllib.request
+import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import os
 from typing import Any
+from urllib.parse import quote, urlparse
 
 import webview
 
@@ -59,6 +64,39 @@ class DesktopApi:
             return {"ok": True}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"Could not open the data folder: {exc}"}
+
+    def decode_vin(self, vin: str) -> dict[str, Any]:
+        cleaned = re.sub(r"[^A-Za-z0-9]", "", vin or "").upper()
+        if len(cleaned) != 17 or re.search(r"[IOQ]", cleaned):
+            return {"ok": False, "message": "Enter a valid 17-character VIN in Settings first."}
+        try:
+            url = f"https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/{quote(cleaned)}?format=json"
+            request = urllib.request.Request(url, headers={"User-Agent": f"Roadbook/{APP_VERSION}"})
+            with urllib.request.urlopen(request, timeout=15) as response:  # noqa: S310
+                payload = json.load(response)
+            result = (payload.get("Results") or [{}])[0]
+            return {
+                "ok": True,
+                "vin": cleaned,
+                "year": result.get("ModelYear", ""),
+                "make": result.get("Make", ""),
+                "model": result.get("Model", ""),
+                "trim": result.get("Trim", ""),
+                "body": result.get("BodyClass", ""),
+                "drive_type": result.get("DriveType", ""),
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"NHTSA VIN lookup failed: {exc}"}
+
+    def open_external_url(self, url: str) -> dict[str, Any]:
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError("Only web links can be opened")
+            webbrowser.open(url)
+            return {"ok": True}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"Could not open that link: {exc}"}
 
     def check_for_updates(self) -> dict[str, Any]:
         return self.updater.check()
@@ -202,7 +240,7 @@ def main() -> None:
                     "document.documentElement.dataset.appReady === 'true' "
                     "&& document.documentElement.dataset.desktopReady === 'true' "
                     "&& Boolean(window.pywebview?.api?.load_state) "
-                    "&& document.querySelectorAll('.nav-item').length === 6 "
+                    "&& document.querySelectorAll('.nav-item').length === 7 "
                     "&& Boolean(document.getElementById('dueNowCount'))"
                 )
                 if ready:

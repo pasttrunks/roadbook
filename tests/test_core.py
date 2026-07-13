@@ -42,7 +42,7 @@ class ReleaseUpdaterTests(unittest.TestCase):
 
     def test_release_url_validation(self) -> None:
         ReleaseUpdater._validate_asset_url(
-            "https://github.com/pasttrunks/roadbook/releases/download/v1.1.2/Roadbook.exe"
+            "https://github.com/pasttrunks/roadbook/releases/download/v1.2.0/Roadbook.exe"
         )
         with self.assertRaises(ValueError):
             ReleaseUpdater._validate_asset_url("https://example.com/Roadbook.exe")
