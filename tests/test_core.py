@@ -1,9 +1,12 @@
 import hashlib
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from desktop_app import DesktopApi
 from roadbook_core import APP_VERSION, ReleaseUpdater, RoadbookStore, version_tuple
 
 
@@ -71,6 +74,23 @@ class ReleaseUpdaterTests(unittest.TestCase):
         script = ReleaseUpdater._updater_script(Path("C:/temp/new/Roadbook.exe"), Path("C:/Roadbook"), 1234)
         self.assertIn("PYINSTALLER_RESET_ENVIRONMENT = '1'", script)
         self.assertIn("Wait-Process -Id 1234", script)
+
+
+class VehicleDataTests(unittest.TestCase):
+    def test_msrp_lookup_prefers_trim_and_drivetrain(self) -> None:
+        payload = {"data": [
+            {"trim": "Grand Touring", "description": "Grand Touring 4dr SUV", "msrp": 27970},
+            {"trim": "Grand Touring", "description": "Grand Touring 4dr SUV AWD", "msrp": 29220},
+            {"trim": "Sport", "description": "Sport 4dr SUV", "msrp": 21545},
+        ]}
+        with patch("desktop_app.urllib.request.urlopen", return_value=io.BytesIO(json.dumps(payload).encode())):
+            result = DesktopApi.__new__(DesktopApi).lookup_msrp({
+                "year": 2015, "make": "Mazda", "model": "CX-5",
+                "trim": "Grand Touring · 2.5L", "drivetrain": "AWD",
+            })
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["msrp"], 29220)
+        self.assertTrue(result["exact"])
 
 
 if __name__ == "__main__":

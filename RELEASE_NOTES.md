@@ -1,11 +1,27 @@
-# Roadbook v1.5.0: The Smart Valuation & AI Parsing Update! 🚀
+# Roadbook 1.5.1
 
-Welcome to our biggest update yet, making Roadbook completely zero-manual-input and drastically improving car value estimations. 
+This update combines Roadbook’s new layout-aware document import with a clearer, more automatic **My car value** experience.
 
-## What's New 🌟
-- **Layout-Aware PDF Scanning**: Our local OCR engine now geometrically reconstructs messy Carfax layouts. It reads column-by-column precisely—fixing jumbled dates, services, and mileages so you never have to type them out manually again! 
-- **Algorithmic Vehicle Valuation**: We replaced basic depreciation with a robust algorithmic model. It calculates make-specific depreciation curves and factors in your driven mileage to give you a highly realistic value of your car today.
-- **NHTSA VIN Decoder**: Just punch in your VIN, and Roadbook dynamically decodes your Year, Make, Model, and Trim directly from the US Department of Transportation database.
-- **Premium Glassmorphic UI**: We've completely redesigned the "My Car Value" section with a stunning dark-mode aesthetic. 
+## What’s new
 
-Just hit Update, restart the app, and enjoy!
+- Automatic MSRP lookup from CarAPI’s key-free open vehicle dataset, including trim and drivetrain matching when available.
+- A clean value journey from original MSRP to purchase price to current estimated value.
+- Make-aware depreciation benchmarks for 15 common brands, with a transparent general fallback.
+- A real depreciation curve combining the benchmark with saved value snapshots.
+- VIN decoding beside the vehicle identity instead of buried in the page.
+- Focused research links for exact-model, sold, asking-price, KBB, and depreciation evidence.
+- Layout-aware local OCR for difficult Carfax and service-history PDFs.
+
+## What was simplified
+
+- Removed the Visor API-key setup and unreliable live-sync workflow.
+- Removed the low-value price-versus-mileage scatter chart and oversized dashboard clutter.
+- Moved optional comparable-listing evidence into a compact expandable table.
+
+## Reliability
+
+- Preserves the Windows OCR and NHTSA VIN improvements from 1.5.0.
+- Adds regression tests for automatic MSRP selection and make-aware depreciation.
+- Preserves existing local records; the new MSRP metadata is added without changing older data.
+
+Roadbook’s estimate is a planning guide, not an appraisal. Mileage, trim, condition, options, history, and local demand can change a vehicle’s real sale price.

@@ -21,10 +21,10 @@ Roadbook turns scattered vehicle paperwork into a useful ownership record. Add a
 - Search, edit, or remove imported and manually entered service records.
 - Export JSON backups, expense CSVs, or a complete shareable vehicle history.
 - Keep an optional VIN or chassis number of any length, including classic vehicles.
-- Build a private market-value snapshot from comparable listings and track depreciation from the purchase price.
+- Automatically look up original MSRP from key-free open vehicle data when the year, make, and model are supported.
+- Compare MSRP, purchase price, and a make-aware planning estimate in one private ownership-value view.
 - Ask NHTSA to decode modern VINs or identify older chassis numbers when its data supports them.
-- Optionally connect your own Visor API key to import live matching listings directly into Roadbook.
-- Compare listing price against mileage and track depreciation snapshots over time.
+- Save comparable listings as evidence and track depreciation snapshots over time.
 - Research sold, asking, and baseline values through pre-filled links to several independent market sources.
 - Import PDFs privately in the Windows app without downloading a browser-side PDF parser.
 - Export only the maintenance status/search currently on screen.

@@ -29,6 +29,7 @@ vm.runInContext(
   'globalThis.__calculateFuelEconomy = calculateFuelEconomy;\n' +
   'globalThis.__buildHistoryCsv = buildHistoryCsv;\n' +
   'globalThis.__calculateMarketValue = calculateMarketValue;\n' +
+  'globalThis.__calculateDepreciationEstimate = calculateDepreciationEstimate;\n' +
   'globalThis.__toLocalISO = toLocalISO;\n' +
   'globalThis.__addMonths = addMonths;\n' +
   'globalThis.__normalizeDate = normalizeDate;',
@@ -72,6 +73,20 @@ const market = sandbox.__calculateMarketValue([
   { price: 14000 }, { price: 12000 }, { price: 15000 }, { price: 13000 }
 ]);
 assert.deepEqual(JSON.parse(JSON.stringify(market)), { count: 4, median: 13500, low: 12000, high: 15000 });
+
+const toyotaEstimate = sandbox.__calculateDepreciationEstimate(
+  { purchasePrice: 30000, purchaseDate: '2021-07-13' },
+  { make: 'Toyota', year: 2021 },
+  new Date(2026, 6, 13, 12)
+);
+assert.ok(Math.abs(toyotaEstimate.value - 19470) <= 2);
+assert.equal(toyotaEstimate.isBrandSpecific, true);
+const generalEstimate = sandbox.__calculateDepreciationEstimate(
+  { msrp: 30000 },
+  { make: 'Unknown', year: 2021 },
+  new Date(2026, 6, 13, 12)
+);
+assert.equal(generalEstimate.value, 15000);
 
 assert.equal(sandbox.__toLocalISO(new Date(2026, 6, 12, 0, 5)), '2026-07-12');
 assert.equal(sandbox.__addMonths('2026-07-12', 1), '2026-08-12');

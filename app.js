@@ -130,7 +130,7 @@ const defaultState = () => ({
   services: structuredClone(defaultServices),
   maintenance: [],
   expenses: [],
-  valuation: { zip: '', purchasePrice: 0, purchaseDate: '', comparables: [], snapshots: [] },
+  valuation: { zip: '', msrp: 0, msrpSource: '', msrpMatch: '', msrpLookupKey: '', purchasePrice: 0, purchaseDate: '', comparables: [], snapshots: [] },
   parsedDrafts: [],
   onboardingComplete: false
 });
@@ -144,7 +144,7 @@ const demoState = () => ({
     { id: 'demo-expense-2', category: 'Fuel', date: '2026-06-02', mileage: 48345, vendor: 'Sample Fuel Stop', amount: 43.28, gallons: 11.4, fullTank: true, notes: 'Demo record' }
   ],
   valuation: {
-    zip: '98101', purchasePrice: 28750, purchaseDate: '2022-02-12',
+    zip: '98101', msrp: 31525, purchasePrice: 28750, purchaseDate: '2022-02-12',
     comparables: [
       { id: 'demo-value-1', date: '2026-06-20', price: 23500, vehicle: '2021 Toyota RAV4 XLE AWD', mileage: 45100, source: 'Demo listing', notes: 'Representative sample—not a live listing.' },
       { id: 'demo-value-2', date: '2026-06-21', price: 22400, vehicle: '2021 Toyota RAV4 XLE AWD', mileage: 51200, source: 'Demo listing', notes: 'Representative sample—not a live listing.' },
@@ -508,11 +508,11 @@ function renderValuation() {
   
   $('#estimatedValue').textContent = currentValue ? money(currentValue) : '—';
   $('#valueRange').textContent = market.count ? `${money(market.low)} to ${money(market.high)} asking-price range` : currentSnapshot ? `Age-based guide as of ${fmtDate(currentSnapshot.date)}` : 'Add comparable listings for a market estimate';
-  $('#valueMeterFill').style.width = `${market.count ? Math.min(100, market.count * 20) : currentValue ? 35 : 0}%`;
+  document.querySelector('#valueMeterFill')?.style.setProperty('width', `${market.count ? Math.min(100, market.count * 20) : currentValue ? 35 : 0}%`);
   $('#valueConfidence').textContent = market.count >= 3 ? `Median of ${market.count} saved comparables` : market.count ? `${market.count} of 3 suggested comparables` : currentSnapshot ? 'Age-based guide—not live market data' : 'No market evidence yet';
   
   $('#statPurchasePrice').textContent = purchasePrice ? money(purchasePrice) : '—';
-  $('#statCurrentValue').textContent = currentValue ? money(currentValue) : '—';
+  if (document.querySelector('#statCurrentValue')) document.querySelector('#statCurrentValue').textContent = currentValue ? money(currentValue) : '—';
   
   if (currentValue && purchasePrice) {
     const change = currentValue - purchasePrice;
@@ -557,7 +557,7 @@ function setupChart(canvas) {
 
 function drawValuationCharts(comparables, snapshots, purchasePrice, purchaseDate) {
   const points = comparables.filter(item => Number(item.price) > 0 && Number(item.mileage) >= 0).map(item => ({ x: Number(item.mileage), y: Number(item.price) }));
-  drawPointChart(setupChart($('#marketScatterChart')), points, 'Add listings to compare price and mileage');
+  if (document.querySelector('#marketScatterChart')) drawPointChart(setupChart(document.querySelector('#marketScatterChart')), points, 'Add listings to compare price and mileage');
   const history = [...snapshots.map(item => ({ x: new Date(item.date).getTime(), y: Number(item.value) }))];
   if (purchasePrice && purchaseDate) history.push({ x: new Date(purchaseDate).getTime(), y: Number(purchasePrice) });
   history.sort((a, b) => a.x - b.x);
@@ -686,8 +686,128 @@ async function handleUpdateValuation() {
 async function resetVisorKey() {
   const result = await window.pywebview?.api?.set_visor_api_key('');
   if (!result?.ok) { toast(result?.message || 'Could not reset the Visor key.'); return; }
-  $('#visorStatus').textContent = 'Visor key cleared. Manual research and comparables remain available.';
+  if (document.querySelector('#visorStatus')) document.querySelector('#visorStatus').textContent = 'Visor key cleared. Manual research and comparables remain available.';
   toast('Visor API key cleared.');
+}
+
+const BRAND_FIVE_YEAR_RESIDUAL = {
+  toyota: .649, subaru: .612, honda: .605, mazda: .597, mini: .595,
+  ram: .595, gmc: .565, fiat: .520, hyundai: .520, chevrolet: .516,
+  kia: .514, volkswagen: .510, ford: .501, nissan: .497, buick: .497
+};
+
+function depreciationProfile(make) {
+  const key = String(make || '').trim().toLowerCase();
+  const residual = BRAND_FIVE_YEAR_RESIDUAL[key] || .50;
+  return { residual, annualRetention: Math.pow(residual, 1 / 5), isBrandSpecific: Boolean(BRAND_FIVE_YEAR_RESIDUAL[key]) };
+}
+
+function calculateDepreciationEstimate(valuation, vehicle, now = new Date()) {
+  const msrp = Number(valuation.msrp || 0);
+  const purchasePrice = Number(valuation.purchasePrice || 0);
+  const purchaseDate = valuation.purchaseDate ? new Date(`${valuation.purchaseDate}T12:00:00`) : null;
+  const profile = depreciationProfile(vehicle.make);
+  let anchor = 0, years = 0, basis = '';
+  if (purchasePrice && purchaseDate && !Number.isNaN(purchaseDate.getTime())) {
+    anchor = purchasePrice;
+    years = Math.max(0, (now - purchaseDate) / (365.25 * 86400000));
+    basis = 'purchase';
+  } else if (msrp && Number(vehicle.year)) {
+    anchor = msrp;
+    years = Math.max(0, now.getFullYear() - Number(vehicle.year));
+    basis = 'msrp';
+  }
+  const value = anchor ? Math.max(500, Math.round(anchor * Math.pow(profile.annualRetention, years))) : 0;
+  return { ...profile, anchor, years, basis, value };
+}
+
+function renderValuation() {
+  const valuation = state.valuation || defaultState().valuation;
+  const market = calculateMarketValue(valuation.comparables || []);
+  const estimate = calculateDepreciationEstimate(valuation, state.vehicle);
+  const vehicleName = [state.vehicle.year, state.vehicle.make, state.vehicle.model, state.vehicle.trim].filter(Boolean).join(' ') || 'Your vehicle';
+  const currentValue = market.count >= 3 ? market.median : estimate.value;
+  const makeLabel = estimate.isBrandSpecific ? `${state.vehicle.make} five-year benchmark` : 'General five-year benchmark';
+
+  $('#valueVehicleName').textContent = vehicleName;
+  $('#msrpInput').value = valuation.msrp || '';
+  $('#msrpLookupStatus').textContent = valuation.msrpSource
+    ? `${valuation.msrpSource}${valuation.msrpMatch ? ` · ${valuation.msrpMatch}` : ''}`
+    : 'Filled automatically when open data has a match';
+  $('#purchasePriceInput').value = valuation.purchasePrice || '';
+  $('#purchaseDateInput').value = valuation.purchaseDate || '';
+  $('#valueZipInput').value = valuation.zip || '';
+  $('#statMsrp').textContent = valuation.msrp ? money(valuation.msrp) : '—';
+  $('#statPurchasePrice').textContent = valuation.purchasePrice ? money(valuation.purchasePrice) : '—';
+  $('#estimatedValue').textContent = currentValue ? money(currentValue) : '—';
+  $('#purchaseSavings').textContent = valuation.msrp && valuation.purchasePrice ? `${money(Math.max(0, valuation.msrp - valuation.purchasePrice))} below MSRP` : 'Add original sticker price';
+  $('#depreciationMethod').textContent = market.count >= 3 ? `Median of ${market.count} saved listings` : makeLabel;
+  $('#valueRange').textContent = market.count >= 3 ? `${money(market.low)}–${money(market.high)} saved asking range` : estimate.value ? `Modeled from ${estimate.basis === 'purchase' ? 'your purchase' : 'MSRP'} over ${estimate.years.toFixed(1)} years` : 'Add MSRP or purchase details to calculate';
+  $('#valueConfidence').textContent = market.count >= 3 ? 'Comparable-backed estimate' : estimate.value ? 'Planning estimate—not an appraisal' : 'Waiting for vehicle costs';
+
+  if (currentValue && valuation.purchasePrice) {
+    const change = currentValue - Number(valuation.purchasePrice);
+    const percent = change / Number(valuation.purchasePrice) * 100;
+    $('#valueChange').textContent = `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}`;
+    $('#valueChangeDetail').textContent = `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}% since purchase`;
+  } else {
+    $('#valueChange').textContent = '—';
+    $('#valueChangeDetail').textContent = 'Add purchase price to compare';
+  }
+  $('#valueExplanation').textContent = market.count >= 3
+    ? 'Your estimate uses the median of saved comparable listings. Asking prices can differ from final sale prices.'
+    : `${makeLabel} is applied as a smooth annual curve. Trim, mileage, condition, location, and options can materially change the real value.`;
+
+  drawDepreciationChart(valuation, estimate);
+  renderMarketResearchLinks();
+  const rows = [...(valuation.comparables || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  $('#comparableSummary').textContent = `${rows.length} saved`;
+  $('#comparableRows').innerHTML = rows.map(item => `<tr><td>${fmtDate(item.date)}</td><td><strong>${escapeHTML(item.vehicle || vehicleName)}</strong></td><td>${item.mileage ? `${miles(item.mileage)} mi` : '—'}</td><td><strong>${money(item.price)}</strong></td><td>${item.url ? `<button class="text-button" data-action="open-comparable" data-comparable-id="${item.id}">${escapeHTML(item.source || 'Listing')}</button>` : escapeHTML(item.source || 'Listing')}</td><td>${escapeHTML(item.notes || '')}</td><td><div class="action-cell"><button class="tiny-button" data-action="edit-comparable" data-comparable-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-comparable" data-comparable-id="${item.id}">Delete</button></div></td></tr>`).join('') || '<tr><td colspan="7">No listings saved yet. Open a source above and add similar vehicles.</td></tr>';
+}
+
+function renderMarketResearchLinks() {
+  const query = [state.vehicle.year, state.vehicle.make, state.vehicle.model, state.vehicle.trim].filter(Boolean).join(' ');
+  const q = encodeURIComponent(query);
+  const makeSlug = encodeURIComponent(String(state.vehicle.make || '').trim().toLowerCase().replace(/\s+/g, '-'));
+  const modelSlug = encodeURIComponent(String(state.vehicle.model || '').trim().toLowerCase().replace(/\s+/g, '-'));
+  const links = [
+    ['Visor', 'Exact-model overview', `https://visor.vin/overview/${makeSlug}/${modelSlug}`],
+    ['Classic.com', 'Sold results and benchmarks', `https://www.classic.com/search/?q=${q}`],
+    ['Cars.com', 'Current asking prices', `https://www.cars.com/shopping/results/?keyword=${q}&zip=${encodeURIComponent(valuationZip())}`],
+    ['Kelley Blue Book', 'Consumer appraisal baseline', 'https://www.kbb.com/car-values/'],
+    ['CarEdge', 'Brand depreciation research', 'https://caredge.com/ranks/depreciation']
+  ];
+  $('#marketResearchLinks').innerHTML = links.map(([name, detail, url]) => `<button class="research-link" data-action="open-market-source" data-url="${escapeAttr(url)}"><strong>${escapeHTML(name)}</strong><span>${escapeHTML(detail)}</span></button>`).join('');
+}
+
+function valuationZip() { return state.valuation?.zip || ''; }
+
+function drawDepreciationChart(valuation, estimate) {
+  const history = (valuation.snapshots || []).map(item => ({ x: new Date(`${item.date}T12:00:00`).getTime(), y: Number(item.value) })).filter(item => item.x && item.y);
+  if (estimate.anchor) {
+    const start = estimate.basis === 'purchase' ? new Date(`${valuation.purchaseDate}T12:00:00`) : new Date(Number(state.vehicle.year), 0, 1, 12);
+    for (let year = 0; year <= Math.max(5, Math.ceil(estimate.years)); year += 1) {
+      const date = new Date(start); date.setFullYear(start.getFullYear() + year);
+      history.push({ x: date.getTime(), y: Math.round(estimate.anchor * Math.pow(estimate.annualRetention, year)) });
+    }
+  }
+  history.sort((a, b) => a.x - b.x);
+  drawPointChart(setupChart($('#depreciationChart')), history, 'Add MSRP or purchase details to see your value curve', true);
+}
+
+function refreshValuation() {
+  state.valuation.msrp = Number($('#msrpInput').value || 0);
+  state.valuation.purchasePrice = Number($('#purchasePriceInput').value || 0);
+  state.valuation.purchaseDate = $('#purchaseDateInput').value;
+  state.valuation.zip = $('#valueZipInput').value.trim();
+  const estimate = calculateDepreciationEstimate(state.valuation, state.vehicle);
+  if (!estimate.value) { toast('Add MSRP or purchase price and date first.'); return; }
+  const guide = { date: todayISO(), value: estimate.value, source: 'Brand benchmark' };
+  const existing = state.valuation.snapshots.findIndex(item => item.date === guide.date && item.source === guide.source);
+  if (existing >= 0) state.valuation.snapshots[existing] = guide;
+  else state.valuation.snapshots.push(guide);
+  toast('Car value estimate updated.');
+  render();
 }
 
 function renderTimeline() {
@@ -1479,6 +1599,30 @@ async function decodeSavedVin() {
   $('#decodedVehicleDetails').textContent = [result.body, result.drive_type, result.warning].filter(Boolean).join(' · ') || 'VIN decoded by NHTSA.';
   toast(result.warning ? 'NHTSA returned partial details with a warning.' : 'Vehicle details decoded with NHTSA.');
   render();
+  await lookupVehicleMsrp(true);
+}
+
+async function lookupVehicleMsrp(force = false) {
+  const vehicle = state.vehicle;
+  const key = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim, vehicle.drivetrain].map(value => String(value || '').trim().toLowerCase()).join('|');
+  if (!vehicle.year || !vehicle.make || !vehicle.model || (!force && (state.valuation.msrp || state.valuation.msrpLookupKey === key))) return;
+  const status = $('#msrpLookupStatus');
+  if (!window.pywebview?.api?.lookup_msrp) {
+    status.textContent = 'Automatic lookup is available in the Windows app';
+    return;
+  }
+  state.valuation.msrpLookupKey = key;
+  status.textContent = 'Looking up original MSRP…';
+  const result = await window.pywebview.api.lookup_msrp(vehicle);
+  if (!result?.ok) {
+    status.textContent = result?.message || 'No open MSRP match found';
+    return;
+  }
+  state.valuation.msrp = Number(result.msrp || 0);
+  state.valuation.msrpSource = result.exact ? result.source : `${result.source} · base model`;
+  state.valuation.msrpMatch = result.match || '';
+  toast(`Original MSRP found: ${money(state.valuation.msrp)}`);
+  render();
 }
 
 function marketOverviewUrl() {
@@ -1511,12 +1655,12 @@ function attachEvents() {
   $('#statusFilter').addEventListener('change', renderMaintenance);
   $('#maintenanceHistorySearch').addEventListener('input', renderMaintenance);
   $('#expenseSearch').addEventListener('input', renderExpenses);
-  $('#valueZipInput').addEventListener('change', event => { state.valuation.zip = event.target.value.trim(); render(); });
-  $('#purchasePriceInput').addEventListener('change', event => { state.valuation.purchasePrice = Number(event.target.value || 0); render(); });
-  $('#purchaseDateInput').addEventListener('change', event => { state.valuation.purchaseDate = event.target.value; render(); });
+  $('#valueZipInput').addEventListener('change', event => { state.valuation.zip = event.target.value.trim(); });
+  $('#msrpInput').addEventListener('change', event => { state.valuation.msrp = Number(event.target.value || 0); state.valuation.msrpSource = 'Manual'; state.valuation.msrpMatch = ''; });
+  $('#purchasePriceInput').addEventListener('change', event => { state.valuation.purchasePrice = Number(event.target.value || 0); });
+  $('#purchaseDateInput').addEventListener('change', event => { state.valuation.purchaseDate = event.target.value; });
   $('#decodeVinBtn').addEventListener('click', decodeSavedVin);
-  $('#syncVisorBtn').addEventListener('click', handleUpdateValuation);
-  $('#clearVisorKeyBtn').addEventListener('click', resetVisorKey);
+  $('#syncVisorBtn').addEventListener('click', refreshValuation);
   $('#entryForm').addEventListener('submit', saveDialog);
   $('#entryForm').addEventListener('change', event => {
     if (event.target.name !== 'category') return;
@@ -1642,7 +1786,7 @@ function showView(view) {
   $$('.nav-item').forEach(button => button.classList.toggle('active', button.dataset.view === view));
   $$('.view').forEach(section => section.classList.toggle('active', section.id === `${view}View`));
   $('#pageTitle').textContent = ({ dashboard: 'Overview', maintenance: 'Maintenance', expenses: 'Expenses', value: 'My car value', carfax: 'Import records', reports: 'Reports', settings: 'Settings' })[view] || 'Overview';
-  requestAnimationFrame(render);
+  requestAnimationFrame(() => { render(); if (view === 'value') lookupVehicleMsrp(); });
 }
 
 applyTheme();

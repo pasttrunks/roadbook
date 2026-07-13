@@ -94,6 +94,54 @@ class DesktopApi:
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"NHTSA VIN lookup failed: {exc}"}
 
+    def lookup_msrp(self, vehicle: dict[str, Any]) -> dict[str, Any]:
+        """Find original US MSRP from CarAPI's key-free open dataset."""
+        year = int(vehicle.get("year") or 0)
+        make = str(vehicle.get("make") or "").strip()
+        model = str(vehicle.get("model") or "").strip()
+        if not year or not make or not model:
+            return {"ok": False, "message": "Add the vehicle year, make, and model first."}
+        try:
+            query = urlencode({"year": year, "make": make, "model": model})
+            request = urllib.request.Request(
+                f"https://carapi.app/api/trims/v2?{query}",
+                headers={"Accept": "application/json", "User-Agent": f"Roadbook/{APP_VERSION}"},
+            )
+            with urllib.request.urlopen(request, timeout=15) as response:  # noqa: S310
+                payload = json.load(response)
+            rows = [row for row in payload.get("data", []) if int(row.get("msrp") or 0) > 0]
+            if not rows:
+                return {"ok": False, "message": "No open MSRP record was found for this model year."}
+
+            trim = str(vehicle.get("trim") or "").lower()
+            drivetrain = str(vehicle.get("drivetrain") or "").lower()
+            ignored = {"and", "the", "with", "unknown", "engine", "liter"}
+            tokens = [token for token in re.findall(r"[a-z0-9]+", trim) if len(token) > 1 and token not in ignored]
+
+            def match_score(row: dict[str, Any]) -> tuple[int, int]:
+                text = " ".join(str(row.get(key) or "") for key in ("submodel", "trim", "description")).lower()
+                score = sum(3 for token in tokens if token in text)
+                if drivetrain in {"awd", "4wd", "fwd", "rwd"} and drivetrain in text:
+                    score += 4
+                return score, -int(row["msrp"])
+
+            best = max(rows, key=match_score)
+            best_score = match_score(best)[0]
+            if not tokens and drivetrain not in {"awd", "4wd", "fwd", "rwd"}:
+                best = min(rows, key=lambda row: int(row["msrp"]))
+            prices = [int(row["msrp"]) for row in rows]
+            return {
+                "ok": True,
+                "msrp": int(best["msrp"]),
+                "low": min(prices),
+                "high": max(prices),
+                "match": best.get("description") or best.get("trim") or model,
+                "exact": bool(best_score),
+                "source": "CarAPI open vehicle dataset",
+            }
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"Automatic MSRP lookup is unavailable: {exc}"}
+
     def get_visor_status(self) -> dict[str, Any]:
         return {"ok": True, "connected": bool(self.store.get_secret("visor_api_key"))}
 
