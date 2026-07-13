@@ -1,3 +1,5 @@
+# Version 1.4.3
+
 **Native Scanned PDF Support (OCR)**
 
 Roadbook now fully supports extracting maintenance history and text from scanned image PDFs!

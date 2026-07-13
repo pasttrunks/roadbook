@@ -253,52 +253,52 @@ class DesktopApi:
         import fitz
         import asyncio
 
-        doc = fitz.open(str(path))
-        pages: list[str] = []
-        for page in doc:
-            pages.append(page.get_text() or "")
-        
-        full_text = "\n".join(pages).strip()
-        if len(full_text) > 50:
-            return full_text
+        with fitz.open(str(path)) as doc:
+            pages: list[str] = []
+            for page in doc:
+                pages.append(page.get_text() or "")
             
-        # Fallback to native Windows OCR for scanned PDFs
-        try:
-            from winrt.windows.media.ocr import OcrEngine
-            from winrt.windows.graphics.imaging import BitmapDecoder
-            from winrt.windows.storage.streams import DataWriter, InMemoryRandomAccessStream
-        except ImportError:
-            return full_text
-
-        async def _ocr_page(page: fitz.Page) -> str:
-            pix = page.get_pixmap(dpi=150)
-            img_bytes = pix.tobytes("png")
-            
-            stream = InMemoryRandomAccessStream()
-            writer = DataWriter(stream)
-            writer.write_bytes(img_bytes)
-            await writer.store_async()
-            await writer.flush_async()
-            stream.seek(0)
-            
-            decoder = await BitmapDecoder.create_async(stream)
-            software_bitmap = await decoder.get_software_bitmap_async()
-            
-            engine = OcrEngine.try_create_from_user_profile_languages()
-            if not engine:
-                return ""
-            result = await engine.recognize_async(software_bitmap)
-            return result.text
-
-        pages.clear()
-        for page in doc:
-            try:
-                text = asyncio.run(_ocr_page(page))
-                pages.append(text)
-            except Exception:
-                pass
+            full_text = "\n".join(pages).strip()
+            if len(full_text) > 50:
+                return full_text
                 
-        return "\n".join(pages).strip()
+            # Fallback to native Windows OCR for scanned PDFs
+            try:
+                from winrt.windows.media.ocr import OcrEngine
+                from winrt.windows.graphics.imaging import BitmapDecoder
+                from winrt.windows.storage.streams import DataWriter, InMemoryRandomAccessStream
+            except ImportError:
+                return full_text
+
+            async def _ocr_page(page: fitz.Page) -> str:
+                pix = page.get_pixmap(dpi=150)
+                img_bytes = pix.tobytes("png")
+                
+                stream = InMemoryRandomAccessStream()
+                writer = DataWriter(stream)
+                writer.write_bytes(img_bytes)
+                await writer.store_async()
+                await writer.flush_async()
+                stream.seek(0)
+                
+                decoder = await BitmapDecoder.create_async(stream)
+                software_bitmap = await decoder.get_software_bitmap_async()
+                
+                engine = OcrEngine.try_create_from_user_profile_languages()
+                if not engine:
+                    return ""
+                result = await engine.recognize_async(software_bitmap)
+                return result.text
+
+            pages.clear()
+            for page in doc:
+                try:
+                    text = asyncio.run(_ocr_page(page))
+                    pages.append(text)
+                except Exception:
+                    pass
+                    
+            return "\n".join(pages).strip()
 
 
 class ReusableHTTPServer(ThreadingHTTPServer):
