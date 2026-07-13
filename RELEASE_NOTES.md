@@ -1,16 +1,20 @@
-# Roadbook 1.4.0
+# Roadbook 1.4.1
 
-This release strengthens Roadbook’s offline-first design and makes market-value research more open and resilient.
+This update delivers the redesigned **My car value** dashboard and a stronger offline PDF engine, with reliability fixes applied before release.
 
-## What changed
+## What’s new
 
-- PDF, TXT, and CSV imports now use the packaged Python reader inside the Windows app—no remote PDF.js download is required.
-- Scanned/image-only PDFs now show clear searchable-text guidance instead of reporting an empty import as successful.
-- NHTSA receives classic and non-standard VIN/chassis queries instead of Roadbook rejecting everything that is not exactly 17 characters.
-- Added a visible **Reset Visor key** control so an invalid or expired key can always be replaced.
-- My Car Value keeps its aggregated hero estimate and depreciation charts independent of any API.
-- Added one-click research handoffs to Classic.com, Bring a Trailer, Cars & Bids, Cars.com, CarGurus, KBB, J.D. Power, and Edmunds.
-- Added **Export this view** for the currently selected maintenance status and history search.
-- Made per-service custom mileage and month intervals explicit in the maintenance guidance.
+- Refreshed valuation dashboard with clearer purchase-price, current-value, and ownership-change cards.
+- Switched offline PDF extraction to PyMuPDF for faster, more robust searchable-PDF handling.
+- Added a clearly labeled age-based depreciation guide using a transparent 15%-per-year assumption.
+- Kept saved comparable listings as the primary market-value evidence, including median, price range, editing, and price-versus-mileage visualization.
+- Retained independent market-research links and the depreciation history chart.
 
-Visor sync remains an optional convenience. Manual comparables, the hero estimate, research links, and charts work without it.
+## Reliability fixes
+
+- Fixed a broken valuation button that referenced a deleted JavaScript function.
+- Removed duplicate API-key reset logic.
+- Prevented repeated clicks from creating duplicate age-guide snapshots on the same day.
+- Avoided describing the age-based formula as live market data.
+
+Roadbook still stores vehicle records locally, and the updater will show this overview before installation.

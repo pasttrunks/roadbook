@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light dark" />
   <title>Roadbook — Your vehicle, organized</title>
   <link rel="icon" href="roadbook.png" />
-  <link rel="stylesheet" href="styles.css?v=1.4.0" />
+  <link rel="stylesheet" href="styles.css?v=1.4.1" />
 </head>
 <body>
   <div class="ambient ambient-a"></div>
@@ -96,14 +96,15 @@
       </section>
 
       <section class="view" id="valueView">
-        <div class="section-toolbar"><div><p class="eyebrow">Market snapshot</p><h3>My car value</h3><p>An instant valuation powered by live market data.</p></div></div>
+        <div class="section-toolbar"><div><p class="eyebrow">Market snapshot</p><h3>My car value</h3><p>A transparent estimate from evidence you save, plus an optional age-based depreciation guide.</p></div><button class="secondary" id="addComparableBtn">Add comparable</button></div>
         <div class="value-grid">
-          <article class="panel surface value-summary"><p class="eyebrow">Current market value</p><strong id="estimatedValue">—</strong><span id="valueRange">Sync market data for an estimate</span><div class="value-meter"><i id="valueMeterFill"></i></div><small id="valueConfidence">Provide Make, Model, and Year in settings</small></article>
-          <article class="panel surface value-setup"><div><p class="eyebrow">Vehicle match</p><h3 id="valueVehicleName">Your vehicle</h3><p id="decodedVehicleDetails">Use your saved details or ask NHTSA to decode a VIN or classic chassis number.</p></div><div class="value-fields"><label>ZIP code<input id="valueZipInput" inputmode="numeric" maxlength="10" placeholder="13413" /></label><label>Purchase price<input id="purchasePriceInput" type="number" min="0" step="100" placeholder="Optional" /></label><label>Purchase date<input id="purchaseDateInput" type="date" /></label></div><div class="button-row"><button class="ghost" id="decodeVinBtn">Decode saved VIN</button><button class="primary" id="syncVisorBtn">Refresh valuation</button><button class="ghost" id="clearVisorKeyBtn">Reset API key</button></div><p class="small-muted" id="visorStatus">Uses the Visor API to aggregate live market data.</p></article>
+          <article class="panel surface value-summary"><p class="eyebrow">Current market value</p><strong id="estimatedValue">—</strong><span id="valueRange">Add comparable listings for a market estimate</span><div class="value-meter"><i id="valueMeterFill"></i></div><small id="valueConfidence">No market evidence yet</small></article>
+          <article class="panel surface value-setup"><div><p class="eyebrow">Vehicle match</p><h3 id="valueVehicleName">Your vehicle</h3><p id="decodedVehicleDetails">Use your saved details or ask NHTSA to decode a VIN or classic chassis number.</p></div><div class="value-fields"><label>ZIP code<input id="valueZipInput" inputmode="numeric" maxlength="10" placeholder="13413" /></label><label>Purchase price<input id="purchasePriceInput" type="number" min="0" step="100" placeholder="Optional" /></label><label>Purchase date<input id="purchaseDateInput" type="date" /></label></div><div class="button-row"><button class="ghost" id="decodeVinBtn">Decode saved VIN</button><button class="primary" id="syncVisorBtn">Add depreciation guide</button><button class="ghost" id="clearVisorKeyBtn">Reset Visor key</button></div><p class="small-muted" id="visorStatus">The guide assumes 15% annual depreciation and is not live market data.</p></article>
         </div>
         <div class="stat-grid value-stats"><article class="stat-card surface"><span>Purchase Price</span><strong id="statPurchasePrice">—</strong><small>original cost</small></article><article class="stat-card surface"><span>Current Value</span><strong id="statCurrentValue">—</strong><small>market median</small></article><article class="stat-card surface"><span>Since purchase</span><strong id="valueChange">—</strong><small id="valueChangeDetail">add purchase price</small></article></div>
-        <article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Value history</p><h3>Depreciation trend</h3></div></div><canvas id="depreciationChart" width="680" height="300" aria-label="Estimated vehicle value over time"></canvas></article>
+        <div class="split-grid value-charts"><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Market distribution</p><h3>Price vs mileage</h3></div></div><canvas id="marketScatterChart" width="680" height="300" aria-label="Comparable listing price by mileage"></canvas></article><article class="panel surface"><div class="panel-header"><div><p class="eyebrow">Value history</p><h3>Depreciation trend</h3></div></div><canvas id="depreciationChart" width="680" height="300" aria-label="Estimated vehicle value over time"></canvas></article></div>
         <article class="sheet-panel surface market-research"><div class="panel-header"><div><p class="eyebrow">Open market research</p><h3>View live listings and deep dive into the market</h3></div><span class="muted-note">Links use your year, make, model, and ZIP where supported</span></div><div id="marketResearchLinks" class="research-link-grid"></div></article>
+        <article class="sheet-panel surface"><div class="panel-header"><div><p class="eyebrow">Evidence</p><h3>Comparable listings</h3></div><span class="muted-note">Use the same year, trim, condition, and similar mileage</span></div><div class="table-wrap history-table-wrap"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Mileage</th><th>Price</th><th>Source</th><th>Notes</th><th>Actions</th></tr></thead><tbody id="comparableRows"></tbody></table></div></article>
         <p class="value-disclaimer">Market snapshot only—not a certified appraisal or guaranteed sale price. Verify listings and vehicle condition before making a financial decision.</p>
       </section>
 
@@ -147,6 +148,6 @@
   <dialog id="updateDialog"><div class="dialog-card update-dialog-card"><div class="dialog-header"><div><p class="eyebrow">Roadbook update</p><h3 id="updateDialogTitle">A new version is ready</h3></div><button type="button" class="icon-button" id="closeUpdateDialogBtn" aria-label="Close"><svg viewBox="0 0 24 24"><path d="m6.7 5.3 5.3 5.3 5.3-5.3 1.4 1.4-5.3 5.3 5.3 5.3-1.4 1.4-5.3-5.3-5.3 5.3-1.4-1.4 5.3-5.3-5.3-5.3 1.4-1.4Z"/></svg></button></div><div class="update-dialog-body"><p>Here’s what changed:</p><pre id="updateNotes"></pre></div><div class="dialog-actions"><button type="button" class="ghost" id="laterUpdateBtn">Later</button><button type="button" class="primary" id="installUpdateBtn">Download and install</button></div></div></dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=1.4.0"></script>
+  <script src="app.js?v=1.4.1"></script>
 </body>
 </html>

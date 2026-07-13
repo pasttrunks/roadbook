@@ -63,6 +63,27 @@ jobs:
             throw "Packaged Roadbook never reached the loaded interface."
           }
 
+      - name: Test packaged offline PDF extraction
+        shell: pwsh
+        run: |
+          $pdf = Join-Path $env:RUNNER_TEMP "roadbook-searchable.pdf"
+          $env:ROADBOOK_PDF_FIXTURE = $pdf
+          @'
+          import os
+          import fitz
+          doc = fitz.open()
+          page = doc.new_page()
+          page.insert_text((72, 72), "ROADBOOK PDF SMOKE - searchable maintenance history")
+          doc.save(os.environ["ROADBOOK_PDF_FIXTURE"])
+          doc.close()
+          '@ | python -
+
+          $env:ROADBOOK_PDF_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-pdf-smoke-ok.txt"
+          $process = Start-Process -FilePath "dist\Roadbook.exe" -ArgumentList @("--pdf-smoke-test", $pdf) -PassThru -Wait
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $env:ROADBOOK_PDF_SMOKE_FILE)) {
+            throw "Packaged Roadbook could not extract searchable PDF text offline."
+          }
+
       - name: Test updater replacement and restart
         shell: pwsh
         run: |

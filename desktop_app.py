@@ -272,6 +272,16 @@ def start_server() -> tuple[ThreadingHTTPServer, str]:
 
 
 def main() -> None:
+    if "--pdf-smoke-test" in sys.argv:
+        index = sys.argv.index("--pdf-smoke-test")
+        if index + 1 >= len(sys.argv):
+            raise RuntimeError("PDF smoke test requires a file path")
+        text = DesktopApi._read_pdf(Path(sys.argv[index + 1]))
+        if "ROADBOOK PDF SMOKE" not in text:
+            raise RuntimeError("Packaged PDF text extraction failed")
+        marker = Path(os.environ.get("ROADBOOK_PDF_SMOKE_FILE", str(Path(tempfile.gettempdir()) / "roadbook-pdf-smoke-ok.txt")))
+        marker.write_text("Packaged PDF extraction succeeded.\n", encoding="utf-8")
+        return
     smoke_test = "--smoke-test" in sys.argv
     server, url = start_server()
     try:
