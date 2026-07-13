@@ -267,6 +267,7 @@ class DesktopApi:
                 from winrt.windows.media.ocr import OcrEngine
                 from winrt.windows.graphics.imaging import BitmapDecoder
                 from winrt.windows.storage.streams import DataWriter, InMemoryRandomAccessStream
+                import winrt.windows.foundation.collections
             except ImportError:
                 return full_text
 
