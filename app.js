@@ -579,7 +579,75 @@ function drawPointChart(chart, points, emptyLabel, connect = false) {
   ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign = 'left'; ctx.fillText(money(minY), pad, 13); ctx.textAlign = 'right'; ctx.fillText(money(maxY), width-15, 13);
 }
 
-function refreshValuation() {
+async function decodeVin(vin) {
+  if (!vin) return null;
+  const res = await api.decode_vin(vin);
+  if (res.ok) {
+    state.vehicle.year = res.year;
+    state.vehicle.make = res.make;
+    state.vehicle.model = res.model;
+    state.vehicle.trim = res.trim;
+    render();
+    return res;
+  }
+  return null;
+}
+
+function calculateVehicleValue() {
+  const purchasePrice = Number(state.valuation.purchasePrice || 0);
+  const purchaseDate = state.valuation.purchaseDate;
+  
+  if (!purchasePrice || !purchaseDate) return 0;
+  
+  const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
+  const yearsOwned = Math.max(0, (new Date() - new Date(purchaseDate)) / msPerYear);
+  
+  let make = (state.vehicle.make || '').toLowerCase();
+  
+  // Depreciation rates for top 15 NA brands
+  const depreciationRates = {
+    'toyota': { firstYear: 0.12, subsequent: 0.08 },
+    'honda': { firstYear: 0.12, subsequent: 0.08 },
+    'subaru': { firstYear: 0.13, subsequent: 0.09 },
+    'jeep': { firstYear: 0.14, subsequent: 0.09 },
+    'chevrolet': { firstYear: 0.16, subsequent: 0.11 },
+    'ford': { firstYear: 0.16, subsequent: 0.11 },
+    'gmc': { firstYear: 0.15, subsequent: 0.10 },
+    'ram': { firstYear: 0.15, subsequent: 0.10 },
+    'nissan': { firstYear: 0.18, subsequent: 0.12 },
+    'hyundai': { firstYear: 0.17, subsequent: 0.12 },
+    'kia': { firstYear: 0.17, subsequent: 0.12 },
+    'volkswagen': { firstYear: 0.18, subsequent: 0.13 },
+    'bmw': { firstYear: 0.22, subsequent: 0.15 },
+    'mercedes-benz': { firstYear: 0.21, subsequent: 0.15 },
+    'lexus': { firstYear: 0.15, subsequent: 0.10 }
+  };
+  
+  const rates = depreciationRates[make] || { firstYear: 0.16, subsequent: 0.11 };
+  
+  // Apply depreciation
+  let currentValue = purchasePrice;
+  if (yearsOwned > 0) {
+    if (yearsOwned <= 1) {
+      currentValue = purchasePrice * (1 - (rates.firstYear * yearsOwned));
+    } else {
+      currentValue = purchasePrice * (1 - rates.firstYear);
+      currentValue = currentValue * Math.pow(1 - rates.subsequent, yearsOwned - 1);
+    }
+  }
+  
+  // Mileage penalty (average 12k miles/year)
+  const currentMileage = Number(state.vehicle.mileage || 0);
+  
+  if (currentMileage > 0) {
+      const mileageDepreciation = currentMileage * 0.10; 
+      currentValue = Math.max(500, currentValue - (mileageDepreciation * 0.3)); 
+  }
+  
+  return Math.round(currentValue);
+}
+
+async function handleUpdateValuation() {
   const purchasePrice = Number(state.valuation.purchasePrice || 0);
   const purchaseDate = state.valuation.purchaseDate;
   if (!purchasePrice || !purchaseDate) {
@@ -587,26 +655,34 @@ function refreshValuation() {
     return;
   }
   
-  const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
-  const yearsOwned = Math.max(0, (new Date() - new Date(purchaseDate)) / msPerYear);
-  const currentValue = Math.max(500, Math.round(purchasePrice * Math.pow(0.85, yearsOwned)));
+  $('#syncVisorBtn').classList.add('loading');
   
+  // Try to decode VIN if we don't have Make
+  if (state.vehicle.vin && !state.vehicle.make) {
+      await decodeVin(state.vehicle.vin);
+  }
+  
+  const currentValue = calculateVehicleValue();
+
   const guide = {
     date: todayISO(),
     value: currentValue,
-    low: currentValue * 0.9,
-    high: currentValue * 1.1,
+    low: currentValue * 0.92,
+    high: currentValue * 1.08,
     count: 0,
-    source: 'Age-based guide'
+    source: 'Algorithmic Valuation'
   };
+  
   const existing = state.valuation.snapshots.findIndex(item => item.date === guide.date && item.source === guide.source);
   if (existing >= 0) state.valuation.snapshots[existing] = guide;
   else state.valuation.snapshots.push(guide);
   
+  state.valuation.currentValue = currentValue;
+  
+  $('#syncVisorBtn').classList.remove('loading');
   toast('Calculated standard depreciation value.');
   render();
 }
-
 async function resetVisorKey() {
   const result = await window.pywebview?.api?.set_visor_api_key('');
   if (!result?.ok) { toast(result?.message || 'Could not reset the Visor key.'); return; }

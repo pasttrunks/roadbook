@@ -1,7 +1,11 @@
-# Version 1.4.4
+# Roadbook v1.5.0: The Smart Valuation & AI Parsing Update! 🚀
 
-**PDF Match Inline Editing & Parser Limits**
+Welcome to our biggest update yet, making Roadbook completely zero-manual-input and drastically improving car value estimations. 
 
-We've drastically improved the PDF service history import experience, especially for highly flattened or low-quality scanned PDFs.
-- **Inline Editing**: You now have full control to manually correct extracted Dates and Mileages! Every parsed service record now features a new "Edit" button. Simply click it to adjust any details the parser missed before importing.
-- **Smarter Safety Limits**: When importing scanned PDFs where the layout gets heavily mangled by OCR, the parser will no longer aggressively force the first date it sees onto dozens of disjointed services. Instead, it securely prompts you to use the new Inline Editor, guaranteeing you are never stuck importing bad data.
+## What's New 🌟
+- **Layout-Aware PDF Scanning**: Our local OCR engine now geometrically reconstructs messy Carfax layouts. It reads column-by-column precisely—fixing jumbled dates, services, and mileages so you never have to type them out manually again! 
+- **Algorithmic Vehicle Valuation**: We replaced basic depreciation with a robust algorithmic model. It calculates make-specific depreciation curves and factors in your driven mileage to give you a highly realistic value of your car today.
+- **NHTSA VIN Decoder**: Just punch in your VIN, and Roadbook dynamically decodes your Year, Make, Model, and Trim directly from the US Department of Transportation database.
+- **Premium Glassmorphic UI**: We've completely redesigned the "My Car Value" section with a stunning dark-mode aesthetic. 
+
+Just hit Update, restart the app, and enjoy!

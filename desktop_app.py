@@ -293,8 +293,55 @@ class DesktopApi:
             pages.clear()
             for page in doc:
                 try:
-                    text = asyncio.run(_ocr_page(page))
-                    pages.append(text)
+                    result = asyncio.run(_ocr_page(page))
+                    words_data = []
+                    for line in result.lines:
+                        for word in line.words:
+                            words_data.append({
+                                "text": word.text,
+                                "x": word.bounding_rect.x,
+                                "y": word.bounding_rect.y,
+                                "h": word.bounding_rect.height
+                            })
+                            
+                    words_data.sort(key=lambda w: w["y"])
+                    
+                    rows = []
+                    current_row = []
+                    current_y = None
+                    
+                    for w in words_data:
+                        if current_y is None:
+                            current_y = w["y"]
+                            current_row.append(w)
+                        else:
+                            if abs(w["y"] - current_y) < (w["h"] * 0.5): # Use half the word height as threshold
+                                current_row.append(w)
+                            else:
+                                rows.append(current_row)
+                                current_row = [w]
+                                current_y = w["y"]
+                    if current_row:
+                        rows.append(current_row)
+                        
+                    extracted_text = ""
+                    for row in rows:
+                        row.sort(key=lambda w: w["x"])
+                        # Reconstruct row text considering large gaps
+                        row_text = ""
+                        last_x = None
+                        for w in row:
+                            if last_x is not None:
+                                gap = w["x"] - last_x
+                                if gap > w["h"] * 2: # Significant gap -> add tab
+                                    row_text += "\t"
+                                else:
+                                    row_text += " "
+                            row_text += w["text"]
+                            last_x = w["x"] + len(w["text"]) * 5 # Approximation of word end
+                            
+                        extracted_text += row_text + "\n"
+                    pages.append(extracted_text)
                 except Exception:
                     pass
                     
