@@ -63,6 +63,44 @@ jobs:
             throw "Packaged Roadbook never reached the loaded interface."
           }
 
+      - name: Test updater replacement and restart
+        shell: pwsh
+        run: |
+          $testRoot = Join-Path $env:RUNNER_TEMP "roadbook-updater-restart"
+          $install = Join-Path $testRoot "install"
+          New-Item -ItemType Directory -Path $install -Force | Out-Null
+          Copy-Item dist\Roadbook.exe (Join-Path $install "Roadbook.exe")
+
+          $env:ROADBOOK_UPDATE_SOURCE = (Resolve-Path "dist\Roadbook.exe").Path
+          $env:ROADBOOK_UPDATE_INSTALL = $install
+          @'
+          import os
+          from pathlib import Path
+          from roadbook_core import ReleaseUpdater
+
+          source = Path(os.environ["ROADBOOK_UPDATE_SOURCE"])
+          install = Path(os.environ["ROADBOOK_UPDATE_INSTALL"])
+          script = ReleaseUpdater._updater_script(source, install, 999999)
+          (install.parent / "restart.ps1").write_text(script, encoding="utf-8-sig")
+          '@ | python -
+
+          $env:APPDATA = Join-Path $testRoot "appdata"
+          $env:ROADBOOK_SMOKE_FILE = Join-Path $testRoot "restart-ok.txt"
+          $env:ROADBOOK_UPDATE_SMOKE_TEST = "1"
+          $env:_PYI_APPLICATION_HOME_DIR = Join-Path $testRoot "expired-_MEI"
+          $env:_PYI_ARCHIVE_FILE = Join-Path $install "Roadbook.exe"
+
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+            -File (Join-Path $testRoot "restart.ps1")
+
+          $deadline = (Get-Date).AddSeconds(40)
+          while (-not (Test-Path $env:ROADBOOK_SMOKE_FILE) -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 500
+          }
+          if (-not (Test-Path $env:ROADBOOK_SMOKE_FILE)) {
+            throw "Updated Roadbook did not restart with a fresh PyInstaller runtime."
+          }
+
       - name: Test standalone browser download
         shell: pwsh
         run: |

@@ -1,17 +1,14 @@
-# Roadbook 1.2.0
+# Roadbook 1.2.1
 
-This release adds a private, transparent market-value workspace inspired by the Roadbook idea captured in Notion.
+This reliability release fixes the automatic updater restart for the single-file Windows app.
 
 ## What changed
 
-- New **My car value** workspace with a comparable-listing median and asking-price range.
-- Track purchase price and see estimated appreciation or depreciation.
-- Save listing price, mileage, source, URL, condition notes, and date for auditable evidence.
-- Decode a saved 17-character VIN using NHTSA’s public vPIC service.
-- Open a matching Visor public market-overview page for live research without a paid API dependency.
-- Clear confidence guidance encourages at least three—and preferably five—similar listings.
-- Explicit appraisal disclaimer distinguishes asking prices from completed sales.
+- Fixed the `Failed to load Python DLL` error after an automatic update restarted Roadbook.
+- The updater now launches Roadbook as a fresh PyInstaller instance instead of inheriting the expired `_MEI` temporary runtime.
+- Added an end-to-end updater restart smoke path so future releases test replacement and restart—not only download staging.
+- Includes the complete **My car value** workspace introduced in 1.2.0.
 
 ## One-time upgrade note
 
-Roadbook 1.1.0 and newer can install this release through the built-in updater.
+If 1.2.0 already replaced your EXE but failed to restart, double-click that EXE once manually. It will open normally and can then install this fix.

@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.1"
 RELEASE_API = "https://api.github.com/repos/pasttrunks/roadbook/releases/latest"
 RELEASE_ASSET = "Roadbook.exe"
 
@@ -223,5 +223,10 @@ Start-Sleep -Milliseconds 750
 
 if (-not (Test-Path -LiteralPath $exe)) {{ throw 'Roadbook installation could not be verified.' }}
 Copy-Item -LiteralPath $source -Destination $exe -Force
-Start-Process -FilePath $exe
+$env:PYINSTALLER_RESET_ENVIRONMENT = '1'
+if ($env:ROADBOOK_UPDATE_SMOKE_TEST -eq '1') {{
+  Start-Process -FilePath $exe -ArgumentList '--smoke-test'
+}} else {{
+  Start-Process -FilePath $exe
+}}
 """

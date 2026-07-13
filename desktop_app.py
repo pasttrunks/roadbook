@@ -120,6 +120,7 @@ class DesktopApi:
                     "-File",
                     result["script_path"],
                 ],
+                env={**os.environ, "PYINSTALLER_RESET_ENVIRONMENT": "1"},
                 creationflags=creation_flags,
                 close_fds=True,
             )

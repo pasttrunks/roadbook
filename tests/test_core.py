@@ -42,7 +42,7 @@ class ReleaseUpdaterTests(unittest.TestCase):
 
     def test_release_url_validation(self) -> None:
         ReleaseUpdater._validate_asset_url(
-            "https://github.com/pasttrunks/roadbook/releases/download/v1.2.0/Roadbook.exe"
+            "https://github.com/pasttrunks/roadbook/releases/download/v1.2.1/Roadbook.exe"
         )
         with self.assertRaises(ValueError):
             ReleaseUpdater._validate_asset_url("https://example.com/Roadbook.exe")
@@ -56,6 +56,11 @@ class ReleaseUpdaterTests(unittest.TestCase):
             ReleaseUpdater._verify_digest(executable, digest)
             with self.assertRaises(ValueError):
                 ReleaseUpdater._verify_digest(executable, "sha256:" + "0" * 64)
+
+    def test_restart_script_resets_pyinstaller_environment(self) -> None:
+        script = ReleaseUpdater._updater_script(Path("C:/temp/new/Roadbook.exe"), Path("C:/Roadbook"), 1234)
+        self.assertIn("PYINSTALLER_RESET_ENVIRONMENT = '1'", script)
+        self.assertIn("Wait-Process -Id 1234", script)
 
 
 if __name__ == "__main__":
