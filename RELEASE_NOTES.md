@@ -1,27 +1,19 @@
-# Roadbook 1.5.1
+# Roadbook 1.5.2
 
-This update combines Roadbook’s new layout-aware document import with a clearer, more automatic **My car value** experience.
+This repair release makes the ownership-value chart truthful and restores offline scanning for image-based PDFs.
 
-## What’s new
+## Fixed
 
-- Automatic MSRP lookup from CarAPI’s key-free open vehicle dataset, including trim and drivetrain matching when available.
-- A clean value journey from original MSRP to purchase price to current estimated value.
-- Make-aware depreciation benchmarks for 15 common brands, with a transparent general fallback.
-- A real depreciation curve combining the benchmark with saved value snapshots.
-- VIN decoding beside the vehicle identity instead of buried in the page.
-- Focused research links for exact-model, sold, asking-price, KBB, and depreciation evidence.
-- Layout-aware local OCR for difficult Carfax and service-history PDFs.
+- Replaced the synthetic depreciation curve with a direct comparison of original MSRP, purchase price, and current estimated value.
+- Added percentages showing where purchase and current value stand against MSRP and where current value stands against purchase price.
+- Fixed a scanned-PDF OCR regression where the layout parser expected OCR line objects but received a plain text string, causing every scanned page to be silently discarded.
+- Improved OCR quality with 200-DPI page rendering, real word bounding boxes, English-language fallback, and useful error messages.
+- Mixed PDFs now keep embedded text pages and OCR only the pages that actually need it.
 
-## What was simplified
+## Verified
 
-- Removed the Visor API-key setup and unreliable live-sync workflow.
-- Removed the low-value price-versus-mileage scatter chart and oversized dashboard clutter.
-- Moved optional comparable-listing evidence into a compact expandable table.
+- Successfully extracted more than 21,000 characters from the supplied scanned 2015 Mazda CX-5 Carfax.
+- Added a packaged image-only PDF OCR test to GitHub Actions so searchable-PDF testing can no longer hide scanner failures.
+- Preserved the automatic MSRP, Windows OCR, NHTSA VIN, updater, and local-data improvements from earlier releases.
 
-## Reliability
-
-- Preserves the Windows OCR and NHTSA VIN improvements from 1.5.0.
-- Adds regression tests for automatic MSRP selection and make-aware depreciation.
-- Preserves existing local records; the new MSRP metadata is added without changing older data.
-
-Roadbook’s estimate is a planning guide, not an appraisal. Mileage, trim, condition, options, history, and local demand can change a vehicle’s real sale price.
+Roadbook processes PDF text and OCR locally on the Windows computer.

@@ -30,6 +30,7 @@ vm.runInContext(
   'globalThis.__buildHistoryCsv = buildHistoryCsv;\n' +
   'globalThis.__calculateMarketValue = calculateMarketValue;\n' +
   'globalThis.__calculateDepreciationEstimate = calculateDepreciationEstimate;\n' +
+  'globalThis.__ownershipValueSeries = ownershipValueSeries;\n' +
   'globalThis.__toLocalISO = toLocalISO;\n' +
   'globalThis.__addMonths = addMonths;\n' +
   'globalThis.__normalizeDate = normalizeDate;',
@@ -87,6 +88,13 @@ const generalEstimate = sandbox.__calculateDepreciationEstimate(
   new Date(2026, 6, 13, 12)
 );
 assert.equal(generalEstimate.value, 15000);
+
+const valueSeries = sandbox.__ownershipValueSeries({ msrp: 30000, purchasePrice: 27000 }, 18000);
+assert.deepEqual(JSON.parse(JSON.stringify(valueSeries)), [
+  { label: 'Original MSRP', value: 30000, detail: '100% of MSRP' },
+  { label: 'Purchase price', value: 27000, detail: '90.0% of MSRP' },
+  { label: 'Current value', value: 18000, detail: '60.0% of MSRP · 66.7% of purchase' }
+]);
 
 assert.equal(sandbox.__toLocalISO(new Date(2026, 6, 12, 0, 5)), '2026-07-12');
 assert.equal(sandbox.__addMonths('2026-07-12', 1), '2026-08-12');

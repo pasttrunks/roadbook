@@ -302,25 +302,22 @@ class DesktopApi:
         import asyncio
 
         with fitz.open(str(path)) as doc:
-            pages: list[str] = []
-            for page in doc:
-                pages.append(page.get_text() or "")
-            
-            full_text = "\n".join(pages).strip()
-            if len(full_text) > 50:
-                return full_text
+            embedded_pages = [(page.get_text() or "").strip() for page in doc]
+            if embedded_pages and all(len(text) > 50 for text in embedded_pages):
+                return "\n".join(embedded_pages).strip()
                 
             # Fallback to native Windows OCR for scanned PDFs
             try:
                 from winrt.windows.media.ocr import OcrEngine
                 from winrt.windows.graphics.imaging import BitmapDecoder
                 from winrt.windows.storage.streams import DataWriter, InMemoryRandomAccessStream
+                from winrt.windows.globalization import Language
                 import winrt.windows.foundation.collections
-            except ImportError:
-                return full_text
+            except ImportError as exc:
+                raise RuntimeError(f"Windows OCR components are unavailable: {exc}") from exc
 
-            async def _ocr_page(page: fitz.Page) -> str:
-                pix = page.get_pixmap(dpi=150)
+            async def _ocr_page(page: fitz.Page):
+                pix = page.get_pixmap(dpi=200, colorspace=fitz.csRGB, alpha=False)
                 img_bytes = pix.tobytes("png")
                 
                 stream = InMemoryRandomAccessStream()
@@ -333,14 +330,18 @@ class DesktopApi:
                 decoder = await BitmapDecoder.create_async(stream)
                 software_bitmap = await decoder.get_software_bitmap_async()
                 
-                engine = OcrEngine.try_create_from_user_profile_languages()
+                engine = OcrEngine.try_create_from_user_profile_languages() or OcrEngine.try_create_from_language(Language("en-US"))
                 if not engine:
-                    return ""
-                result = await engine.recognize_async(software_bitmap)
-                return result.text
+                    raise RuntimeError("Windows has no OCR language available. Install the English OCR language feature.")
+                return await engine.recognize_async(software_bitmap)
 
-            pages.clear()
-            for page in doc:
+            pages: list[str] = []
+            failures: list[str] = []
+            for page_number, page in enumerate(doc, start=1):
+                embedded_text = embedded_pages[page_number - 1]
+                if len(embedded_text) > 50:
+                    pages.append(embedded_text)
+                    continue
                 try:
                     result = asyncio.run(_ocr_page(page))
                     words_data = []
@@ -350,7 +351,8 @@ class DesktopApi:
                                 "text": word.text,
                                 "x": word.bounding_rect.x,
                                 "y": word.bounding_rect.y,
-                                "h": word.bounding_rect.height
+                                "h": word.bounding_rect.height,
+                                "right": word.bounding_rect.x + word.bounding_rect.width,
                             })
                             
                     words_data.sort(key=lambda w: w["y"])
@@ -387,14 +389,17 @@ class DesktopApi:
                                 else:
                                     row_text += " "
                             row_text += w["text"]
-                            last_x = w["x"] + len(w["text"]) * 5 # Approximation of word end
+                            last_x = w["right"]
                             
                         extracted_text += row_text + "\n"
                     pages.append(extracted_text)
-                except Exception:
-                    pass
-                    
-            return "\n".join(pages).strip()
+                except Exception as exc:  # noqa: BLE001
+                    failures.append(f"page {page_number}: {exc}")
+
+            ocr_text = "\n".join(pages).strip()
+            if not ocr_text and failures:
+                raise RuntimeError(f"Scanned PDF OCR failed ({'; '.join(failures[:3])})")
+            return ocr_text
 
 
 class ReusableHTTPServer(ThreadingHTTPServer):

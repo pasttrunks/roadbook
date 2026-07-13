@@ -758,7 +758,7 @@ function renderValuation() {
     ? 'Your estimate uses the median of saved comparable listings. Asking prices can differ from final sale prices.'
     : `${makeLabel} is applied as a smooth annual curve. Trim, mileage, condition, location, and options can materially change the real value.`;
 
-  drawDepreciationChart(valuation, estimate);
+  drawOwnershipValueChart(valuation, currentValue);
   renderMarketResearchLinks();
   const rows = [...(valuation.comparables || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   $('#comparableSummary').textContent = `${rows.length} saved`;
@@ -782,17 +782,50 @@ function renderMarketResearchLinks() {
 
 function valuationZip() { return state.valuation?.zip || ''; }
 
-function drawDepreciationChart(valuation, estimate) {
-  const history = (valuation.snapshots || []).map(item => ({ x: new Date(`${item.date}T12:00:00`).getTime(), y: Number(item.value) })).filter(item => item.x && item.y);
-  if (estimate.anchor) {
-    const start = estimate.basis === 'purchase' ? new Date(`${valuation.purchaseDate}T12:00:00`) : new Date(Number(state.vehicle.year), 0, 1, 12);
-    for (let year = 0; year <= Math.max(5, Math.ceil(estimate.years)); year += 1) {
-      const date = new Date(start); date.setFullYear(start.getFullYear() + year);
-      history.push({ x: date.getTime(), y: Math.round(estimate.anchor * Math.pow(estimate.annualRetention, year)) });
-    }
+function ownershipValueSeries(valuation, currentValue) {
+  const msrp = Number(valuation.msrp || 0);
+  const purchase = Number(valuation.purchasePrice || 0);
+  const current = Number(currentValue || 0);
+  return [
+    { label: 'Original MSRP', value: msrp, detail: msrp ? '100% of MSRP' : '' },
+    { label: 'Purchase price', value: purchase, detail: msrp && purchase ? `${(purchase / msrp * 100).toFixed(1)}% of MSRP` : '' },
+    { label: 'Current value', value: current, detail: current && msrp ? `${(current / msrp * 100).toFixed(1)}% of MSRP${purchase ? ` · ${(current / purchase * 100).toFixed(1)}% of purchase` : ''}` : '' }
+  ];
+}
+
+function drawOwnershipValueChart(valuation, currentValue) {
+  const chart = setupChart($('#depreciationChart'));
+  const { ctx, width, height } = chart;
+  const series = ownershipValueSeries(valuation, currentValue);
+  const maxValue = Math.max(...series.map(item => item.value));
+  if (!maxValue) {
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted');
+    ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('Add MSRP and purchase details to compare value', width / 2, height / 2);
+    return;
   }
-  history.sort((a, b) => a.x - b.x);
-  drawPointChart(setupChart($('#depreciationChart')), history, 'Add MSRP or purchase details to see your value curve', true);
+  const pad = { top: 45, right: 26, bottom: 62, left: 26 };
+  const plotHeight = height - pad.top - pad.bottom;
+  const slot = (width - pad.left - pad.right) / series.length;
+  const barWidth = Math.min(112, slot * .54);
+  const colors = ['#a7b0be', '#5a91dc', '#1477e8'];
+  const text = getComputedStyle(document.body).getPropertyValue('--text');
+  const muted = getComputedStyle(document.body).getPropertyValue('--muted');
+  ctx.strokeStyle = 'rgba(127,137,151,.22)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.left, height - pad.bottom); ctx.lineTo(width - pad.right, height - pad.bottom); ctx.stroke();
+  series.forEach((item, index) => {
+    const center = pad.left + slot * index + slot / 2;
+    const barHeight = item.value ? Math.max(3, item.value / maxValue * plotHeight) : 0;
+    const x = center - barWidth / 2;
+    const y = height - pad.bottom - barHeight;
+    ctx.fillStyle = colors[index];
+    if (barHeight) ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.fillStyle = text; ctx.textAlign = 'center'; ctx.font = '700 13px system-ui';
+    ctx.fillText(item.value ? money(item.value) : 'Not added', center, Math.max(18, y - 12));
+    ctx.font = '700 11px system-ui'; ctx.fillText(item.label, center, height - 35);
+    ctx.fillStyle = muted; ctx.font = '10px system-ui';
+    ctx.fillText(item.detail || 'Waiting for value', center, height - 17);
+  });
 }
 
 function refreshValuation() {

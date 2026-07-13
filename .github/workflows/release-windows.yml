@@ -84,6 +84,34 @@ jobs:
             throw "Packaged Roadbook could not extract searchable PDF text offline."
           }
 
+      - name: Test packaged scanned-PDF OCR
+        shell: pwsh
+        run: |
+          $pdf = Join-Path $env:RUNNER_TEMP "roadbook-scanned.pdf"
+          $env:ROADBOOK_PDF_FIXTURE = $pdf
+          @'
+          import os
+          import fitz
+
+          source = fitz.open()
+          page = source.new_page(width=612, height=792)
+          page.insert_text((72, 120), "ROADBOOK PDF SMOKE - scanned maintenance history", fontsize=20)
+          pix = page.get_pixmap(dpi=200, colorspace=fitz.csRGB, alpha=False)
+          source.close()
+
+          scanned = fitz.open()
+          scanned_page = scanned.new_page(width=612, height=792)
+          scanned_page.insert_image(scanned_page.rect, stream=pix.tobytes("png"))
+          scanned.save(os.environ["ROADBOOK_PDF_FIXTURE"])
+          scanned.close()
+          '@ | python -
+
+          $env:ROADBOOK_PDF_SMOKE_FILE = Join-Path $env:RUNNER_TEMP "roadbook-ocr-smoke-ok.txt"
+          $process = Start-Process -FilePath "dist\Roadbook.exe" -ArgumentList @("--pdf-smoke-test", $pdf) -PassThru -Wait
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $env:ROADBOOK_PDF_SMOKE_FILE)) {
+            throw "Packaged Roadbook could not OCR a scanned PDF offline."
+          }
+
       - name: Test updater replacement and restart
         shell: pwsh
         run: |
