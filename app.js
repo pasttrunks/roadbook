@@ -1515,7 +1515,7 @@ function attachEvents() {
   $('#purchasePriceInput').addEventListener('change', event => { state.valuation.purchasePrice = Number(event.target.value || 0); render(); });
   $('#purchaseDateInput').addEventListener('change', event => { state.valuation.purchaseDate = event.target.value; render(); });
   $('#decodeVinBtn').addEventListener('click', decodeSavedVin);
-  $('#syncVisorBtn').addEventListener('click', refreshValuation);
+  $('#syncVisorBtn').addEventListener('click', handleUpdateValuation);
   $('#clearVisorKeyBtn').addEventListener('click', resetVisorKey);
   $('#entryForm').addEventListener('submit', saveDialog);
   $('#entryForm').addEventListener('change', event => {
