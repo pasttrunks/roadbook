@@ -7,12 +7,13 @@ import threading
 import json
 import re
 import urllib.request
+import urllib.error
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import os
 from typing import Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlencode, urlparse
 
 import webview
 
@@ -87,6 +88,55 @@ class DesktopApi:
             }
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"NHTSA VIN lookup failed: {exc}"}
+
+    def get_visor_status(self) -> dict[str, Any]:
+        return {"ok": True, "connected": bool(self.store.get_secret("visor_api_key"))}
+
+    def set_visor_api_key(self, api_key: str) -> dict[str, Any]:
+        key = (api_key or "").strip()
+        if key and not key.startswith("sk_"):
+            return {"ok": False, "message": "That does not look like a Visor API key."}
+        self.store.set_secret("visor_api_key", key)
+        return {"ok": True, "connected": bool(key)}
+
+    def fetch_visor_listings(self, vehicle: dict[str, Any]) -> dict[str, Any]:
+        key = self.store.get_secret("visor_api_key")
+        if not key:
+            return {"ok": False, "needs_key": True, "message": "Connect a Visor API key first."}
+        make, model = str(vehicle.get("make", "")).strip(), str(vehicle.get("model", "")).strip()
+        if not make or not model:
+            return {"ok": False, "message": "Add the vehicle make and model first."}
+        params: dict[str, Any] = {"make": make, "model": model, "limit": 20}
+        if vehicle.get("year"):
+            params["year"] = int(vehicle["year"])
+        if vehicle.get("trim"):
+            params["trim"] = str(vehicle["trim"]).split("·", 1)[0].strip()
+        if vehicle.get("zip"):
+            params["zip"] = str(vehicle["zip"]).strip()
+        try:
+            url = f"https://api.visor.vin/v1/listings?{urlencode(params)}"
+            request = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}", "Accept": "application/json", "User-Agent": f"Roadbook/{APP_VERSION}"})
+            with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310
+                payload = json.load(response)
+            listings = []
+            for item in payload.get("data", []):
+                price = item.get("price")
+                if not price:
+                    continue
+                listings.append({
+                    "id": str(item.get("id") or item.get("vin") or ""), "date": datetime.now().date().isoformat(),
+                    "price": price, "mileage": item.get("mileage") or item.get("miles") or 0,
+                    "vehicle": " ".join(str(item.get(field) or "") for field in ("year", "make", "model", "trim")).strip(),
+                    "source": "Visor", "url": item.get("url") or item.get("listing_url") or "",
+                    "notes": item.get("dealer_name") or "Live Visor listing",
+                })
+            return {"ok": True, "listings": listings, "total": payload.get("pagination", {}).get("total", len(listings))}
+        except urllib.error.HTTPError as exc:
+            if exc.code in {401, 403}:
+                return {"ok": False, "needs_key": True, "message": "Visor rejected this API key. Check it and try again."}
+            return {"ok": False, "message": f"Visor request failed ({exc.code})."}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "message": f"Could not load Visor market data: {exc}"}
 
     def open_external_url(self, url: str) -> dict[str, Any]:
         try:

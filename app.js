@@ -4,7 +4,13 @@ const LEGACY_DB_KEY = 'cx5-care-ledger-v1';
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+function toLocalISO(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+const todayISO = () => toLocalISO();
 const fmtDate = (date) => {
   if (!date) return 'No date';
   const d = new Date(`${date}T12:00:00`);
@@ -105,40 +111,15 @@ const defaultServices = [
 
 
 const seededMaintenance = [
-  { id: 'cf-oil-2015-11051', serviceId: 'engine_oil', date: '2015-08-21', mileage: 11051, amount: 0, vendor: 'Clinton Auto Service', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-filter-2015-11051', serviceId: 'engine_oil_filter', date: '2015-08-21', mileage: 11051, amount: 0, vendor: 'Clinton Auto Service', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-rotate-2016-26005', serviceId: 'tire_rotation', date: '2016-06-22', mileage: 26005, amount: 0, vendor: 'Clinton Auto Service', notes: 'Tires rotated.', source: 'carfax' },
-  { id: 'cf-oil-2017-49468', serviceId: 'engine_oil', date: '2017-11-22', mileage: 49468, amount: 0, vendor: 'Clinton Auto Service', notes: 'Oil and filter changed during recommended maintenance.', source: 'carfax' },
-  { id: 'cf-filter-2017-49468', serviceId: 'engine_oil_filter', date: '2017-11-22', mileage: 49468, amount: 0, vendor: 'Clinton Auto Service', notes: 'Oil and filter changed during recommended maintenance.', source: 'carfax' },
-  { id: 'cf-brakes-2017-49468', serviceId: 'brake_inspection', date: '2017-11-22', mileage: 49468, amount: 0, vendor: 'Clinton Auto Service', notes: 'Front and rear brake pads and rotors replaced.', source: 'carfax' },
-  { id: 'cf-air-2018-62494', serviceId: 'engine_air_filter', date: '2018-09-17', mileage: 62494, amount: 0, vendor: 'Lindfield Transmission', notes: 'Engine air filter replaced.', source: 'carfax' },
-  { id: 'cf-cabin-2018-62494', serviceId: 'cabin_air_filter', date: '2018-09-17', mileage: 62494, amount: 0, vendor: 'Lindfield Transmission', notes: 'Cabin air filter replaced/cleaned.', source: 'carfax' },
-  { id: 'cf-rotate-2018-64502', serviceId: 'tire_rotation', date: '2018-10-31', mileage: 64502, amount: 0, vendor: 'Lindfield Transmission', notes: 'Tires balanced and rotated; alignment performed.', source: 'carfax' },
-  { id: 'cf-oil-2019-77420', serviceId: 'engine_oil', date: '2019-09-11', mileage: 77420, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-filter-2019-77420', serviceId: 'engine_oil_filter', date: '2019-09-11', mileage: 77420, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-oil-2020-92018', serviceId: 'engine_oil', date: '2020-09-17', mileage: 92018, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-filter-2020-92018', serviceId: 'engine_oil_filter', date: '2020-09-17', mileage: 92018, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-battery-2021-95552', serviceId: 'battery', date: '2021-01-27', mileage: 95552, amount: 0, vendor: 'Lindfield Transmission', notes: 'Battery replaced; charging system checked.', source: 'carfax' },
-  { id: 'cf-air-2021-95552', serviceId: 'engine_air_filter', date: '2021-01-27', mileage: 95552, amount: 0, vendor: 'Lindfield Transmission', notes: 'Engine air filter replaced.', source: 'carfax' },
-  { id: 'cf-cabin-2021-95552', serviceId: 'cabin_air_filter', date: '2021-01-27', mileage: 95552, amount: 0, vendor: 'Lindfield Transmission', notes: 'Cabin air filter replaced/cleaned.', source: 'carfax' },
-  { id: 'cf-brakes-2021-95552', serviceId: 'brake_inspection', date: '2021-01-27', mileage: 95552, amount: 0, vendor: 'Lindfield Transmission', notes: 'Front and rear brake pads and rotors replaced.', source: 'carfax' },
-  { id: 'cf-belt-2021-98000', serviceId: 'drive_belts', date: '2021-06-01', mileage: 98000, amount: 0, vendor: 'Steet Ponte Mazda', notes: 'Serpentine belt replaced.', source: 'carfax' },
-  { id: 'cf-suspension-2021-98000', serviceId: 'suspension_steering', date: '2021-06-01', mileage: 98000, amount: 0, vendor: 'Steet Ponte Mazda', notes: 'Rear shock absorbers replaced.', source: 'carfax' },
-  { id: 'cf-brakes-2022', serviceId: 'brake_inspection', date: '2022-03-22', mileage: 104264, amount: 0, vendor: 'Lindfield Transmission', notes: 'Brake pads and rotors replaced; mileage anchored to the adjacent inspection record.', source: 'carfax' },
-  { id: 'cf-suspension-2022', serviceId: 'suspension_steering', date: '2022-03-22', mileage: 104264, amount: 0, vendor: 'Lindfield Transmission', notes: 'Rear springs, stabilizer links, and sway-bar links replaced.', source: 'carfax' },
-  { id: 'cf-oil-2022-109036', serviceId: 'engine_oil', date: '2022-09-19', mileage: 109036, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-filter-2022-109036', serviceId: 'engine_oil_filter', date: '2022-09-19', mileage: 109036, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-battery-2023-120039', serviceId: 'battery', date: '2023-10-17', mileage: 120039, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Battery replaced.', source: 'carfax' },
-  { id: 'cf-oil-2023-120039', serviceId: 'engine_oil', date: '2023-10-17', mileage: 120039, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-filter-2023-120039', serviceId: 'engine_oil_filter', date: '2023-10-17', mileage: 120039, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-suspension-2024-128300', serviceId: 'suspension_steering', date: '2024-06-20', mileage: 128300, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Front wheel bearings and both outer tie-rod ends replaced.', source: 'carfax' },
-  { id: 'cf-air-2024-131411', serviceId: 'engine_air_filter', date: '2024-09-01', mileage: 131411, amount: 0, vendor: 'Valvoline Instant Oil Change', notes: 'Engine air filter replaced.', source: 'carfax' },
-  { id: 'cf-oil-2024-135065', serviceId: 'engine_oil', date: '2024-12-19', mileage: 135065, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Oil and filter changed; water pump and serpentine belt replaced.', source: 'carfax' },
-  { id: 'cf-filter-2024-135065', serviceId: 'engine_oil_filter', date: '2024-12-19', mileage: 135065, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Oil and filter changed.', source: 'carfax' },
-  { id: 'cf-belt-2024-135065', serviceId: 'drive_belts', date: '2024-12-19', mileage: 135065, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Serpentine belt replaced.', source: 'carfax' },
-  { id: 'cf-battery-check-2026', serviceId: 'battery', date: '2026-01-23', mileage: 144515, amount: 0, vendor: 'Jerry Smith & Sons Car Care Center', notes: 'Battery/charging system checked for a no-start complaint.', source: 'carfax' },
-  { id: 'cf-oil-2026-145519', serviceId: 'engine_oil', date: '2026-05-07', mileage: 145519, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed; tire condition and pressure checked.', source: 'carfax' },
-  { id: 'cf-filter-2026-145519', serviceId: 'engine_oil_filter', date: '2026-05-07', mileage: 145519, amount: 0, vendor: 'Lindfield Transmission', notes: 'Oil and filter changed.', source: 'carfax' }
+  { id: 'demo-oil-1', serviceId: 'engine_oil', date: '2023-03-18', mileage: 18120, amount: 74.95, vendor: 'Sample Service Center', notes: 'Synthetic oil and filter changed.', source: 'demo' },
+  { id: 'demo-filter-1', serviceId: 'engine_oil_filter', date: '2023-03-18', mileage: 18120, amount: 0, vendor: 'Sample Service Center', notes: 'Oil filter replaced with oil service.', source: 'demo' },
+  { id: 'demo-rotate-1', serviceId: 'tire_rotation', date: '2023-09-09', mileage: 23680, amount: 32, vendor: 'Sample Tire Shop', notes: 'Tires rotated and pressures checked.', source: 'demo' },
+  { id: 'demo-oil-2', serviceId: 'engine_oil', date: '2024-02-24', mileage: 28640, amount: 79.5, vendor: 'Sample Service Center', notes: 'Synthetic oil and filter changed.', source: 'demo' },
+  { id: 'demo-cabin-1', serviceId: 'cabin_air_filter', date: '2024-02-24', mileage: 28640, amount: 39, vendor: 'Sample Service Center', notes: 'Cabin air filter replaced.', source: 'demo' },
+  { id: 'demo-brakes-1', serviceId: 'brake_inspection', date: '2024-10-12', mileage: 35110, amount: 0, vendor: 'Sample Service Center', notes: 'Brake system inspected; no replacement needed.', source: 'demo' },
+  { id: 'demo-oil-3', serviceId: 'engine_oil', date: '2025-04-05', mileage: 40190, amount: 82.15, vendor: 'Sample Service Center', notes: 'Synthetic oil and filter changed.', source: 'demo' },
+  { id: 'demo-air-1', serviceId: 'engine_air_filter', date: '2025-04-05', mileage: 40190, amount: 44, vendor: 'Sample Service Center', notes: 'Engine air filter replaced.', source: 'demo' },
+  { id: 'demo-rotate-2', serviceId: 'tire_rotation', date: '2026-01-17', mileage: 47280, amount: 36, vendor: 'Sample Tire Shop', notes: 'Tires rotated and tread depth recorded.', source: 'demo' }
 ];
 
 const defaultState = () => ({
@@ -149,15 +130,30 @@ const defaultState = () => ({
   services: structuredClone(defaultServices),
   maintenance: [],
   expenses: [],
-  valuation: { zip: '', purchasePrice: 0, purchaseDate: '', comparables: [] },
+  valuation: { zip: '', purchasePrice: 0, purchaseDate: '', comparables: [], snapshots: [] },
   parsedDrafts: [],
   onboardingComplete: false
 });
 
 const demoState = () => ({
   ...defaultState(),
-  vehicle: { name: 'My CX-5', year: 2015, make: 'Mazda', model: 'CX-5', trim: 'Grand Touring · 2.5L', drivetrain: 'AWD', currentMileage: 147000, startMileage: 145914, currency: '$', dueSoonMiles: 1200, scheduleProfile: 'severe' },
+  vehicle: { name: 'Sample RAV4', year: 2021, make: 'Toyota', model: 'RAV4', trim: 'XLE · 2.5L', drivetrain: 'AWD', currentMileage: 48620, startMileage: 18120, currency: '$', dueSoonMiles: 1200, scheduleProfile: 'normal' },
   maintenance: structuredClone(seededMaintenance),
+  expenses: [
+    { id: 'demo-expense-1', category: 'Fuel', date: '2026-05-18', mileage: 48010, vendor: 'Sample Fuel Stop', amount: 42.16, gallons: 11.2, fullTank: true, notes: 'Demo record' },
+    { id: 'demo-expense-2', category: 'Fuel', date: '2026-06-02', mileage: 48345, vendor: 'Sample Fuel Stop', amount: 43.28, gallons: 11.4, fullTank: true, notes: 'Demo record' }
+  ],
+  valuation: {
+    zip: '98101', purchasePrice: 28750, purchaseDate: '2022-02-12',
+    comparables: [
+      { id: 'demo-value-1', date: '2026-06-20', price: 23500, vehicle: '2021 Toyota RAV4 XLE AWD', mileage: 45100, source: 'Demo listing', notes: 'Representative sample—not a live listing.' },
+      { id: 'demo-value-2', date: '2026-06-21', price: 22400, vehicle: '2021 Toyota RAV4 XLE AWD', mileage: 51200, source: 'Demo listing', notes: 'Representative sample—not a live listing.' },
+      { id: 'demo-value-3', date: '2026-06-22', price: 24100, vehicle: '2021 Toyota RAV4 XLE AWD', mileage: 42600, source: 'Demo listing', notes: 'Representative sample—not a live listing.' }
+    ],
+    snapshots: [
+      { date: '2024-07-01', value: 26800, source: 'Demo' }, { date: '2025-07-01', value: 24900, source: 'Demo' }, { date: '2026-06-22', value: 23500, source: 'Demo' }
+    ]
+  },
   onboardingComplete: true
 });
 
@@ -196,7 +192,8 @@ function normalizeState(value, onboardingFallback = false) {
     valuation: {
       ...fresh.valuation,
       ...(parsed.valuation || {}),
-      comparables: Array.isArray(parsed.valuation?.comparables) ? parsed.valuation.comparables : []
+      comparables: Array.isArray(parsed.valuation?.comparables) ? parsed.valuation.comparables : [],
+      snapshots: Array.isArray(parsed.valuation?.snapshots) ? parsed.valuation.snapshots : []
     },
     parsedDrafts: [],
     onboardingComplete: parsed.onboardingComplete === undefined ? onboardingFallback : Boolean(parsed.onboardingComplete)
@@ -253,7 +250,7 @@ function addMonths(dateISO, months) {
   const d = new Date(`${dateISO}T12:00:00`);
   if (Number.isNaN(d.getTime())) return null;
   d.setMonth(d.getMonth() + Number(months));
-  return d.toISOString().slice(0, 10);
+  return toLocalISO(d);
 }
 
 function calcDue(service) {
@@ -350,7 +347,7 @@ function renderDashboard() {
   const dueItems = getDueItems();
   const overdue = dueItems.filter(item => item.status === 'overdue').length;
   const expensesTotal = state.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const month = new Date().toISOString().slice(0, 7);
+  const month = toLocalISO().slice(0, 7);
   const monthTotal = state.expenses.filter(item => (item.date || '').slice(0,7) === month).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const milesTracked = Math.max(0, Number(state.vehicle.currentMileage || 0) - Number(state.vehicle.startMileage || state.vehicle.currentMileage || 0));
   const costPerMile = milesTracked > 0 ? expensesTotal / milesTracked : 0;
@@ -509,6 +506,7 @@ function renderValuation() {
   $('#highestComparable').textContent = snapshot.high ? money(snapshot.high) : '—';
   $('#valueConfidence').textContent = snapshot.count >= 5 ? 'Strong sample · verify trim, mileage, and condition' : snapshot.count >= 3 ? 'Useful early sample · add more listings for confidence' : `${snapshot.count} of 3 minimum comparables`;
   $('#valueMeterFill').style.width = `${Math.min(100, snapshot.count * 20)}%`;
+  drawValuationCharts(valuation.comparables || [], valuation.snapshots || [], valuation.purchasePrice, valuation.purchaseDate);
 
   const purchasePrice = Number(valuation.purchasePrice || 0);
   if (snapshot.median && purchasePrice) {
@@ -530,6 +528,61 @@ function renderValuation() {
       <td>${escapeHTML(item.notes || '')}</td>
       <td><div class="action-cell"><button class="tiny-button" data-action="edit-comparable" data-comparable-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-comparable" data-comparable-id="${item.id}">Delete</button></div></td>
     </tr>`).join('') || '<tr><td colspan="7">No comparable listings yet. Research the live market, then save three or more similar vehicles.</td></tr>';
+}
+
+function setupChart(canvas) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth || 620, height = 300;
+  canvas.width = width * dpr; canvas.height = height * dpr;
+  ctx.scale(dpr, dpr); ctx.clearRect(0, 0, width, height);
+  return { ctx, width, height };
+}
+
+function drawValuationCharts(comparables, snapshots, purchasePrice, purchaseDate) {
+  const scatter = setupChart($('#marketScatterChart'));
+  const points = comparables.filter(item => Number(item.price) > 0 && Number(item.mileage) >= 0);
+  drawPointChart(scatter, points.map(item => ({ x: Number(item.mileage), y: Number(item.price) })), 'Add listings to compare price and mileage');
+  const history = [...snapshots.map(item => ({ x: new Date(item.date).getTime(), y: Number(item.value) }))];
+  if (purchasePrice && purchaseDate) history.push({ x: new Date(purchaseDate).getTime(), y: Number(purchasePrice) });
+  history.sort((a, b) => a.x - b.x);
+  drawPointChart(setupChart($('#depreciationChart')), history, 'Sync market data over time to build your trend', true);
+}
+
+function drawPointChart(chart, points, emptyLabel, connect = false) {
+  const { ctx, width, height } = chart, pad = 42;
+  ctx.font = '12px system-ui'; ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted');
+  if (!points.length) { ctx.textAlign = 'center'; ctx.fillText(emptyLabel, width / 2, height / 2); return; }
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  let minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  if (minX === maxX) maxX += 1; if (minY === maxY) { minY *= .9; maxY *= 1.1; }
+  const px = x => pad + ((x - minX) / (maxX - minX)) * (width - pad * 1.4);
+  const py = y => height - pad - ((y - minY) / (maxY - minY)) * (height - pad * 1.5);
+  ctx.strokeStyle = 'rgba(127,137,151,.25)'; ctx.beginPath(); ctx.moveTo(pad, 15); ctx.lineTo(pad, height-pad); ctx.lineTo(width-15, height-pad); ctx.stroke();
+  if (connect && points.length > 1) { ctx.strokeStyle = '#1477e8'; ctx.lineWidth = 3; ctx.beginPath(); points.forEach((p,i) => i ? ctx.lineTo(px(p.x),py(p.y)) : ctx.moveTo(px(p.x),py(p.y))); ctx.stroke(); }
+  ctx.fillStyle = '#1477e8'; points.forEach(p => { ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 5, 0, Math.PI*2); ctx.fill(); });
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign = 'left'; ctx.fillText(money(minY), pad, 13); ctx.textAlign = 'right'; ctx.fillText(money(maxY), width-15, 13);
+}
+
+async function syncVisorMarket() {
+  const button = $('#syncVisorBtn'); button.disabled = true; button.textContent = 'Syncing…';
+  let status = await window.pywebview?.api?.get_visor_status();
+  if (!status?.connected) {
+    const key = prompt('Paste your Visor API key. It is stored only in Roadbook desktop settings and is never included in exports or backups.');
+    if (!key) { button.disabled = false; button.textContent = 'Sync Visor listings'; return; }
+    status = await window.pywebview?.api?.set_visor_api_key(key);
+    if (!status?.ok) { toast(status?.message || 'Could not save the API key.'); button.disabled = false; button.textContent = 'Sync Visor listings'; return; }
+  }
+  const result = await window.pywebview?.api?.fetch_visor_listings({ ...state.vehicle, zip: state.valuation.zip });
+  button.disabled = false; button.textContent = 'Sync Visor listings';
+  if (!result?.ok) { toast(result?.message || 'Visor sync is available in the Windows app.'); return; }
+  const existing = new Set(state.valuation.comparables.map(item => item.externalId).filter(Boolean));
+  const added = result.listings.filter(item => !existing.has(item.id)).map(item => ({ ...item, externalId: item.id, id: uid() }));
+  state.valuation.comparables.push(...added);
+  const market = calculateMarketValue(result.listings);
+  if (market.median) state.valuation.snapshots.push({ date: todayISO(), value: market.median, low: market.low, high: market.high, count: market.count, source: 'Visor' });
+  $('#visorStatus').textContent = `Visor connected · ${added.length} new listings saved · ${result.total || result.listings.length} matches found`;
+  render(); toast(`Added ${added.length} Visor listings.`);
 }
 
 function renderTimeline() {
@@ -967,7 +1020,7 @@ function confidenceScore(date, mileage, line) {
 function normalizeDate(raw) {
   if (!raw) return '';
   const parsed = new Date(raw.replace(/-/g, '/'));
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  if (!Number.isNaN(parsed.getTime())) return toLocalISO(parsed);
   const parts = raw.split(/[\/\-]/);
   if (parts.length === 3) {
     let [m, d, y] = parts.map(part => part.padStart(2, '0'));
@@ -1309,6 +1362,7 @@ function attachEvents() {
   $('#purchaseDateInput').addEventListener('change', event => { state.valuation.purchaseDate = event.target.value; render(); });
   $('#decodeVinBtn').addEventListener('click', decodeSavedVin);
   $('#openMarketResearchBtn').addEventListener('click', () => openExternalUrl(marketOverviewUrl()));
+  $('#syncVisorBtn').addEventListener('click', syncVisorMarket);
   $('#entryForm').addEventListener('submit', saveDialog);
   $('#entryForm').addEventListener('change', event => {
     if (event.target.name !== 'category') return;

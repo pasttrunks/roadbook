@@ -268,6 +268,7 @@ tr:last-child td { border-bottom: 0; }
 .value-fields { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
 .value-fields label { display: grid; gap: 6px; color: var(--muted); font-size: .64rem; font-weight: 680; }
 .value-stats { margin-top: 14px; }
+.value-charts { margin-top: 14px; }
 .value-disclaimer { margin: 12px 4px 0; color: var(--muted); font-size: .64rem; line-height: 1.5; }
 .summary-stack { display: grid; padding: 7px 17px 15px; }
 .summary-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }

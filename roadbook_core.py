@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.3.0"
 RELEASE_API = "https://api.github.com/repos/pasttrunks/roadbook/releases/latest"
 RELEASE_ASSET = "Roadbook.exe"
 
@@ -88,6 +88,18 @@ class RoadbookStore:
             return {"ok": True, **self.storage_info()}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"Could not use that backup folder: {exc}"}
+
+    def get_secret(self, name: str) -> str:
+        return str(self._read_settings().get(name, ""))
+
+    def set_secret(self, name: str, value: str) -> None:
+        settings = self._read_settings()
+        if value:
+            settings[name] = value
+        else:
+            settings.pop(name, None)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self._atomic_write(self.settings_path, json.dumps(settings, indent=2) + "\n")
 
     def _read_settings(self) -> dict[str, Any]:
         try:

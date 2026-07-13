@@ -23,6 +23,8 @@ Roadbook turns scattered vehicle paperwork into a useful ownership record. Add a
 - Keep an optional VIN or chassis number of any length, including classic vehicles.
 - Build a private market-value snapshot from comparable listings and track depreciation from the purchase price.
 - Decode modern VINs with NHTSA and open matching public Visor market research without a paid valuation API.
+- Optionally connect your own Visor API key to import live matching listings directly into Roadbook.
+- Compare listing price against mileage and track depreciation snapshots over time.
 - Light and dark themes with a responsive desktop interface.
 - Local-only storage by default.
 
@@ -44,7 +46,7 @@ Roadbook asks for the vehicle basics and then offers three clear paths:
 
 1. **Import my records** — upload or paste an existing service history.
 2. **Start fresh** — begin with an empty ledger.
-3. **Explore demo** — try the app with sample Mazda CX-5 history.
+3. **Explore demo** — try a clearly labeled, non-personal Toyota RAV4 sample with maintenance, expenses, and valuation charts.
 
 The maintenance intervals included with Roadbook are editable starting points, not manufacturer-specific advice. Verify them against your owner’s manual.
 

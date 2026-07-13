@@ -30,6 +30,16 @@ class RoadbookStoreTests(unittest.TestCase):
             result = RoadbookStore(Path(root)).save("[]")
             self.assertFalse(result["ok"])
 
+    def test_desktop_secret_stays_out_of_user_data_and_backup(self) -> None:
+        with tempfile.TemporaryDirectory() as root, tempfile.TemporaryDirectory() as mirror:
+            store = RoadbookStore(Path(root))
+            store.set_secret("visor_api_key", "sk_test_private")
+            store.set_backup_folder(mirror)
+            store.save(json.dumps({"vehicle": {"name": "Sample"}}))
+            self.assertEqual(store.get_secret("visor_api_key"), "sk_test_private")
+            self.assertNotIn("sk_test_private", store.data_path.read_text(encoding="utf-8"))
+            self.assertNotIn("sk_test_private", (Path(mirror) / "Roadbook-auto-backup.json").read_text(encoding="utf-8"))
+
 
 class ReleaseUpdaterTests(unittest.TestCase):
     def test_release_notes_match_application_version(self) -> None:

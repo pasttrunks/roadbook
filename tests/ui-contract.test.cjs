@@ -23,5 +23,8 @@ assert.match(html, /id="checkUpdatesBtn"/, 'Manual update check is missing');
 assert.match(html, /id="updateNotes"/, 'Update overview is missing');
 assert.match(html, /id="estimatedValue"/, 'Market-value estimate is missing');
 assert.match(html, /id="comparableRows"/, 'Comparable-listing evidence is missing');
+assert.match(html, /id="syncVisorBtn"/, 'In-app Visor sync is missing');
+assert.match(html, /id="marketScatterChart"/, 'Market price chart is missing');
+assert.match(html, /id="depreciationChart"/, 'Depreciation history chart is missing');
 
 console.log('UI contract regression test passed.');

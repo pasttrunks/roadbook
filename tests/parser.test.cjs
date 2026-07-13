@@ -28,7 +28,10 @@ vm.runInContext(
   'globalThis.__parseCarfaxText = parseCarfaxText;\n' +
   'globalThis.__calculateFuelEconomy = calculateFuelEconomy;\n' +
   'globalThis.__buildHistoryCsv = buildHistoryCsv;\n' +
-  'globalThis.__calculateMarketValue = calculateMarketValue;',
+  'globalThis.__calculateMarketValue = calculateMarketValue;\n' +
+  'globalThis.__toLocalISO = toLocalISO;\n' +
+  'globalThis.__addMonths = addMonths;\n' +
+  'globalThis.__normalizeDate = normalizeDate;',
   sandbox,
   { filename: appPath }
 );
@@ -69,5 +72,10 @@ const market = sandbox.__calculateMarketValue([
   { price: 14000 }, { price: 12000 }, { price: 15000 }, { price: 13000 }
 ]);
 assert.deepEqual(JSON.parse(JSON.stringify(market)), { count: 4, median: 13500, low: 12000, high: 15000 });
+
+assert.equal(sandbox.__toLocalISO(new Date(2026, 6, 12, 0, 5)), '2026-07-12');
+assert.equal(sandbox.__addMonths('2026-07-12', 1), '2026-08-12');
+assert.equal(sandbox.__normalizeDate('07/12/2026'), '2026-07-12');
+assert.doesNotMatch(source, /toISOString\(\)\.slice\(0,\s*(7|10)\)/, 'Local calendar dates must not be formatted through UTC');
 
 console.log('Parser, fuel-economy, and history-export regression tests passed.');
