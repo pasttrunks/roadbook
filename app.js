@@ -493,25 +493,28 @@ function calculateMarketValue(comparables) {
 
 function renderValuation() {
   const valuation = state.valuation || defaultState().valuation;
-  const snapshot = calculateMarketValue(valuation.comparables || []);
   const vehicleName = [state.vehicle.year, state.vehicle.make, state.vehicle.model, state.vehicle.trim].filter(Boolean).join(' ') || 'Your vehicle';
   $('#valueVehicleName').textContent = vehicleName;
   $('#valueZipInput').value = valuation.zip || '';
+  
+  const purchasePrice = Number(valuation.purchasePrice || 0);
   $('#purchasePriceInput').value = valuation.purchasePrice || '';
   $('#purchaseDateInput').value = valuation.purchaseDate || '';
-  $('#estimatedValue').textContent = snapshot.median ? money(snapshot.median) : '—';
-  $('#valueRange').textContent = snapshot.count ? `${money(snapshot.low)} to ${money(snapshot.high)} asking-price range` : 'Add at least three similar listings';
-  $('#comparableCount').textContent = snapshot.count;
-  $('#lowestComparable').textContent = snapshot.low ? money(snapshot.low) : '—';
-  $('#highestComparable').textContent = snapshot.high ? money(snapshot.high) : '—';
-  $('#valueConfidence').textContent = snapshot.count >= 5 ? 'Strong sample · verify trim, mileage, and condition' : snapshot.count >= 3 ? 'Useful early sample · add more listings for confidence' : `${snapshot.count} of 3 minimum comparables`;
-  $('#valueMeterFill').style.width = `${Math.min(100, snapshot.count * 20)}%`;
-  drawValuationCharts(valuation.comparables || [], valuation.snapshots || [], valuation.purchasePrice, valuation.purchaseDate);
-  renderMarketResearchLinks();
-
-  const purchasePrice = Number(valuation.purchasePrice || 0);
-  if (snapshot.median && purchasePrice) {
-    const change = snapshot.median - purchasePrice;
+  
+  const snapshots = valuation.snapshots || [];
+  const currentSnapshot = snapshots.length ? snapshots[snapshots.length - 1] : null;
+  const currentValue = currentSnapshot ? currentSnapshot.value : 0;
+  
+  $('#estimatedValue').textContent = currentValue ? money(currentValue) : '—';
+  $('#valueRange').textContent = currentSnapshot ? `Estimated as of ${fmtDate(currentSnapshot.date)}` : 'Refresh valuation to get an estimate';
+  $('#valueMeterFill').style.width = currentValue ? '100%' : '0%';
+  $('#valueConfidence').textContent = currentSnapshot ? 'Based on standard depreciation curve' : 'Provide Purchase Price and Date';
+  
+  $('#statPurchasePrice').textContent = purchasePrice ? money(purchasePrice) : '—';
+  $('#statCurrentValue').textContent = currentValue ? money(currentValue) : '—';
+  
+  if (currentValue && purchasePrice) {
+    const change = currentValue - purchasePrice;
     const percent = purchasePrice ? (change / purchasePrice) * 100 : 0;
     $('#valueChange').textContent = `${change >= 0 ? '+' : '−'}${money(Math.abs(change))}`;
     $('#valueChangeDetail').textContent = `${percent >= 0 ? '+' : ''}${percent.toFixed(1)}% versus purchase price`;
@@ -520,15 +523,8 @@ function renderValuation() {
     $('#valueChangeDetail').textContent = 'add purchase price';
   }
 
-  const rows = [...(valuation.comparables || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-  $('#comparableRows').innerHTML = rows.map(item => `
-    <tr>
-      <td>${fmtDate(item.date)}</td><td><strong>${escapeHTML(item.vehicle || vehicleName)}</strong></td>
-      <td>${item.mileage ? `${miles(item.mileage)} mi` : '—'}</td><td><strong>${money(item.price)}</strong></td>
-      <td>${item.url ? `<button class="text-button" data-action="open-comparable" data-comparable-id="${item.id}">${escapeHTML(item.source || 'Listing')}</button>` : escapeHTML(item.source || 'Listing')}</td>
-      <td>${escapeHTML(item.notes || '')}</td>
-      <td><div class="action-cell"><button class="tiny-button" data-action="edit-comparable" data-comparable-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-comparable" data-comparable-id="${item.id}">Delete</button></div></td>
-    </tr>`).join('') || '<tr><td colspan="7">No comparable listings yet. Research the live market, then save three or more similar vehicles.</td></tr>';
+  drawValuationCharts(snapshots, purchasePrice, valuation.purchaseDate);
+  renderMarketResearchLinks();
 }
 
 function renderMarketResearchLinks() {
@@ -556,14 +552,11 @@ function setupChart(canvas) {
   return { ctx, width, height };
 }
 
-function drawValuationCharts(comparables, snapshots, purchasePrice, purchaseDate) {
-  const scatter = setupChart($('#marketScatterChart'));
-  const points = comparables.filter(item => Number(item.price) > 0 && Number(item.mileage) >= 0);
-  drawPointChart(scatter, points.map(item => ({ x: Number(item.mileage), y: Number(item.price) })), 'Add listings to compare price and mileage');
+function drawValuationCharts(snapshots, purchasePrice, purchaseDate) {
   const history = [...snapshots.map(item => ({ x: new Date(item.date).getTime(), y: Number(item.value) }))];
   if (purchasePrice && purchaseDate) history.push({ x: new Date(purchaseDate).getTime(), y: Number(purchasePrice) });
   history.sort((a, b) => a.x - b.x);
-  drawPointChart(setupChart($('#depreciationChart')), history, 'Sync market data over time to build your trend', true);
+  drawPointChart(setupChart($('#depreciationChart')), history, 'Calculate value to build your trend', true);
 }
 
 function drawPointChart(chart, points, emptyLabel, connect = false) {
@@ -581,25 +574,34 @@ function drawPointChart(chart, points, emptyLabel, connect = false) {
   ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign = 'left'; ctx.fillText(money(minY), pad, 13); ctx.textAlign = 'right'; ctx.fillText(money(maxY), width-15, 13);
 }
 
-async function syncVisorMarket() {
-  const button = $('#syncVisorBtn'); button.disabled = true; button.textContent = 'Syncing…';
-  let status = await window.pywebview?.api?.get_visor_status();
-  if (!status?.connected) {
-    const key = prompt('Paste your Visor API key. It is stored only in Roadbook desktop settings and is never included in exports or backups.');
-    if (!key) { button.disabled = false; button.textContent = 'Sync Visor listings'; return; }
-    status = await window.pywebview?.api?.set_visor_api_key(key);
-    if (!status?.ok) { toast(status?.message || 'Could not save the API key.'); button.disabled = false; button.textContent = 'Sync Visor listings'; return; }
+async function refreshValuation() {
+  const purchasePrice = Number(state.valuation.purchasePrice || 0);
+  const purchaseDate = state.valuation.purchaseDate;
+  if (!purchasePrice || !purchaseDate) {
+    toast('Please enter your Purchase Price and Date to calculate depreciation.');
+    return;
   }
-  const result = await window.pywebview?.api?.fetch_visor_listings({ ...state.vehicle, zip: state.valuation.zip });
-  button.disabled = false; button.textContent = 'Sync Visor listings';
-  if (!result?.ok) { toast(result?.message || 'Visor sync is available in the Windows app.'); return; }
-  const existing = new Set(state.valuation.comparables.map(item => item.externalId).filter(Boolean));
-  const added = result.listings.filter(item => !existing.has(item.id)).map(item => ({ ...item, externalId: item.id, id: uid() }));
-  state.valuation.comparables.push(...added);
-  const market = calculateMarketValue(result.listings);
-  if (market.median) state.valuation.snapshots.push({ date: todayISO(), value: market.median, low: market.low, high: market.high, count: market.count, source: 'Visor' });
-  $('#visorStatus').textContent = `Visor connected · ${added.length} new listings saved · ${result.total || result.listings.length} matches found`;
-  render(); toast(`Added ${added.length} Visor listings.`);
+  
+  // Calculate standard depreciation (approx 15% per year)
+  const msPerYear = 1000 * 60 * 60 * 24 * 365.25;
+  const yearsOwned = Math.max(0, (new Date() - new Date(purchaseDate)) / msPerYear);
+  const currentValue = Math.max(500, Math.round(purchasePrice * Math.pow(0.85, yearsOwned)));
+  
+  state.valuation.snapshots.push({
+    date: todayISO(),
+    value: currentValue,
+    low: currentValue * 0.9,
+    high: currentValue * 1.1,
+    count: 0,
+    source: 'Algorithm'
+  });
+  
+  toast('Calculated standard depreciation value.');
+  render();
+}
+
+function resetVisorKey() {
+  toast('API key feature removed. Using local algorithm.');
 }
 
 async function resetVisorKey() {
@@ -1362,7 +1364,6 @@ function attachEvents() {
   });
 
   $('#addExpenseBtn').addEventListener('click', () => openDialog('expense'));
-  $('#addComparableBtn').addEventListener('click', () => openDialog('comparable'));
   $('#addExpenseTopBtn').addEventListener('click', () => openDialog('expense'));
   $('#addMaintenanceBtn').addEventListener('click', () => openDialog('maintenance'));
   $('#heroLogServiceBtn')?.addEventListener('click', () => openDialog('maintenance'));

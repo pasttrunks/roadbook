@@ -250,12 +250,12 @@ class DesktopApi:
 
     @staticmethod
     def _read_pdf(path: Path) -> str:
-        from pypdf import PdfReader
+        import fitz
 
-        reader = PdfReader(str(path))
+        doc = fitz.open(str(path))
         pages: list[str] = []
-        for page in reader.pages:
-            pages.append(page.extract_text() or "")
+        for page in doc:
+            pages.append(page.get_text() or "")
         return "\n".join(pages).strip()
 
 
