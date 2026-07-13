@@ -26,5 +26,10 @@ assert.match(html, /id="comparableRows"/, 'Comparable-listing evidence is missin
 assert.match(html, /id="syncVisorBtn"/, 'In-app Visor sync is missing');
 assert.match(html, /id="marketScatterChart"/, 'Market price chart is missing');
 assert.match(html, /id="depreciationChart"/, 'Depreciation history chart is missing');
+assert.match(html, /id="clearVisorKeyBtn"/, 'Visor key recovery control is missing');
+assert.match(html, /id="marketResearchLinks"/, 'Open market research links are missing');
+assert.match(html, /id="exportFilteredMaintenanceBtn"/, 'Filtered maintenance export is missing');
+assert.match(html, /id="carfaxFileDrop"/, 'Desktop offline import hook is missing');
+assert.doesNotMatch(app, /cdnjs\.cloudflare\.com|pdf\.min\.mjs/, 'PDF import must not depend on a remote runtime');
 
 console.log('UI contract regression test passed.');

@@ -269,6 +269,11 @@ tr:last-child td { border-bottom: 0; }
 .value-fields label { display: grid; gap: 6px; color: var(--muted); font-size: .64rem; font-weight: 680; }
 .value-stats { margin-top: 14px; }
 .value-charts { margin-top: 14px; }
+.market-research { margin-top: 14px; }
+.research-link-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; padding: 16px 18px 20px; }
+.research-link { display: grid; gap: 4px; min-height: 76px; padding: 14px; text-align: left; color: var(--text); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.research-link:hover { border-color: var(--accent); transform: translateY(-1px); }
+.research-link span { color: var(--muted); font-size: .64rem; font-weight: 500; }
 .value-disclaimer { margin: 12px 4px 0; color: var(--muted); font-size: .64rem; line-height: 1.5; }
 .summary-stack { display: grid; padding: 7px 17px 15px; }
 .summary-row { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
@@ -380,6 +385,7 @@ dialog::backdrop { background: rgba(22,27,35,.42); backdrop-filter: blur(10px); 
   .rule-card:nth-child(odd) { border-right: 0; }
   .dialog-fields { grid-template-columns: 1fr; }
   .value-fields { grid-template-columns: 1fr; }
+  .research-link-grid { grid-template-columns: 1fr 1fr; }
   .dialog-fields label:last-child { grid-column: auto; }
   .welcome-choice { grid-template-columns: 1fr; }
 }

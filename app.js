@@ -507,6 +507,7 @@ function renderValuation() {
   $('#valueConfidence').textContent = snapshot.count >= 5 ? 'Strong sample · verify trim, mileage, and condition' : snapshot.count >= 3 ? 'Useful early sample · add more listings for confidence' : `${snapshot.count} of 3 minimum comparables`;
   $('#valueMeterFill').style.width = `${Math.min(100, snapshot.count * 20)}%`;
   drawValuationCharts(valuation.comparables || [], valuation.snapshots || [], valuation.purchasePrice, valuation.purchaseDate);
+  renderMarketResearchLinks();
 
   const purchasePrice = Number(valuation.purchasePrice || 0);
   if (snapshot.median && purchasePrice) {
@@ -528,6 +529,22 @@ function renderValuation() {
       <td>${escapeHTML(item.notes || '')}</td>
       <td><div class="action-cell"><button class="tiny-button" data-action="edit-comparable" data-comparable-id="${item.id}">Edit</button><button class="tiny-button" data-action="delete-comparable" data-comparable-id="${item.id}">Delete</button></div></td>
     </tr>`).join('') || '<tr><td colspan="7">No comparable listings yet. Research the live market, then save three or more similar vehicles.</td></tr>';
+}
+
+function renderMarketResearchLinks() {
+  const query = [state.vehicle.year, state.vehicle.make, state.vehicle.model, state.vehicle.trim].filter(Boolean).join(' ');
+  const q = encodeURIComponent(query);
+  const links = [
+    ['Classic.com', 'Sold results & market benchmarks', `https://www.classic.com/search/?q=${q}`],
+    ['Bring a Trailer', 'Detailed auction results', `https://bringatrailer.com/search/?s=${q}`],
+    ['Cars & Bids', 'Modern enthusiast auctions', `https://carsandbids.com/search?q=${q}`],
+    ['Cars.com', 'Current asking prices', `https://www.cars.com/shopping/results/?keyword=${q}&zip=${encodeURIComponent(state.valuation.zip || '')}`],
+    ['CarGurus', 'Deal-rating sanity check', 'https://www.cargurus.com/'],
+    ['Kelley Blue Book', 'Consumer valuation baseline', 'https://www.kbb.com/car-values/'],
+    ['J.D. Power / NADA', 'Trade-in and retail baseline', 'https://www.jdpower.com/cars'],
+    ['Edmunds', 'Appraisal baseline', 'https://www.edmunds.com/appraisal/']
+  ];
+  $('#marketResearchLinks').innerHTML = links.map(([name, detail, url]) => `<button class="research-link" data-action="open-market-source" data-url="${escapeAttr(url)}"><strong>${escapeHTML(name)}</strong><span>${escapeHTML(detail)}</span></button>`).join('');
 }
 
 function setupChart(canvas) {
@@ -583,6 +600,13 @@ async function syncVisorMarket() {
   if (market.median) state.valuation.snapshots.push({ date: todayISO(), value: market.median, low: market.low, high: market.high, count: market.count, source: 'Visor' });
   $('#visorStatus').textContent = `Visor connected · ${added.length} new listings saved · ${result.total || result.listings.length} matches found`;
   render(); toast(`Added ${added.length} Visor listings.`);
+}
+
+async function resetVisorKey() {
+  const result = await window.pywebview?.api?.set_visor_api_key('');
+  if (!result?.ok) { toast(result?.message || 'Could not reset the Visor key.'); return; }
+  $('#visorStatus').textContent = 'Visor key cleared. Manual research and comparables remain available.';
+  toast('Visor API key cleared.');
 }
 
 function renderTimeline() {
@@ -933,22 +957,7 @@ async function readCarfaxFile(file) {
 }
 
 async function readPdf(file) {
-  try {
-    const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.76/pdf.min.mjs');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.76/pdf.worker.min.mjs';
-    const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-    let output = '';
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const content = await page.getTextContent();
-      output += content.items.map(item => item.str).join(' ') + '\n';
-    }
-    return output;
-  } catch (error) {
-    console.error(error);
-    throw new Error('PDF text extraction failed. Paste the Carfax service history text instead, or run with internet access so the PDF parser can load.');
-  }
+  throw new Error('PDF files are parsed privately and offline by the Roadbook Windows app. In a browser, use TXT/CSV or paste the service-history text.');
 }
 
 function parseCarfaxText(text) {
@@ -1084,6 +1093,16 @@ function exportCsv() {
 function exportHistoryCsv() {
   const csv = buildHistoryCsv(state);
   downloadFile(`roadbook-full-history-${todayISO()}.csv`, csv, 'text/csv');
+}
+
+function exportFilteredMaintenance() {
+  const filter = $('#statusFilter').value || 'all';
+  const visibleIds = new Set(getDueItems().filter(item => filter === 'all' || item.status === filter).map(item => item.service.id));
+  const query = ($('#maintenanceHistorySearch')?.value || '').trim().toLowerCase();
+  const rows = state.maintenance.filter(item => visibleIds.has(item.serviceId) && (!query || `${serviceName(item.serviceId)} ${item.vendor} ${item.notes} ${item.date} ${item.mileage}`.toLowerCase().includes(query)));
+  const header = ['Date','Mileage','Service','Category','Vendor','Amount','Notes'];
+  const csv = [header, ...rows.map(item => [item.date, item.mileage, serviceName(item.serviceId), state.services.find(service => service.id === item.serviceId)?.category || '', item.vendor || '', item.amount || 0, item.notes || ''])].map(row => row.map(csvCell).join(',')).join('\n');
+  downloadFile(`roadbook-maintenance-${filter}-${todayISO()}.csv`, csv, 'text/csv');
 }
 
 function buildHistoryCsv(ledger) {
@@ -1322,8 +1341,8 @@ async function decodeSavedVin() {
     trim: result.trim || state.vehicle.trim,
     vin: result.vin
   };
-  $('#decodedVehicleDetails').textContent = [result.body, result.drive_type].filter(Boolean).join(' · ') || 'VIN decoded by NHTSA.';
-  toast('Vehicle details decoded with NHTSA.');
+  $('#decodedVehicleDetails').textContent = [result.body, result.drive_type, result.warning].filter(Boolean).join(' · ') || 'VIN decoded by NHTSA.';
+  toast(result.warning ? 'NHTSA returned partial details with a warning.' : 'Vehicle details decoded with NHTSA.');
   render();
 }
 
@@ -1361,8 +1380,8 @@ function attachEvents() {
   $('#purchasePriceInput').addEventListener('change', event => { state.valuation.purchasePrice = Number(event.target.value || 0); render(); });
   $('#purchaseDateInput').addEventListener('change', event => { state.valuation.purchaseDate = event.target.value; render(); });
   $('#decodeVinBtn').addEventListener('click', decodeSavedVin);
-  $('#openMarketResearchBtn').addEventListener('click', () => openExternalUrl(marketOverviewUrl()));
   $('#syncVisorBtn').addEventListener('click', syncVisorMarket);
+  $('#clearVisorKeyBtn').addEventListener('click', resetVisorKey);
   $('#entryForm').addEventListener('submit', saveDialog);
   $('#entryForm').addEventListener('change', event => {
     if (event.target.name !== 'category') return;
@@ -1415,6 +1434,17 @@ function attachEvents() {
       const item = state.valuation.comparables.find(record => record.id === actionEl.dataset.comparableId);
       if (item?.url) openExternalUrl(item.url);
     }
+    if (action === 'open-market-source') openExternalUrl(actionEl.dataset.url);
+  });
+
+  $('#carfaxFileDrop').addEventListener('click', async event => {
+    if (!window.pywebview?.api?.choose_carfax_file) return;
+    event.preventDefault();
+    $('#importStatus').textContent = 'Opening offline file reader…';
+    const result = await window.pywebview.api.choose_carfax_file();
+    if (!result?.ok) { $('#importStatus').textContent = result?.message || ''; return; }
+    $('#carfaxText').value = result.text || '';
+    $('#importStatus').textContent = `Loaded ${result.name} offline. Now click Find service records.`;
   });
 
   $('#carfaxFile').addEventListener('change', async event => {
@@ -1450,6 +1480,7 @@ function attachEvents() {
   $('#quickExportBtn').addEventListener('click', exportJson);
   $('#exportCsvBtn').addEventListener('click', exportCsv);
   $('#exportHistoryCsvBtn').addEventListener('click', exportHistoryCsv);
+  $('#exportFilteredMaintenanceBtn').addEventListener('click', exportFilteredMaintenance);
   $('#openDataFolderBtn').addEventListener('click', async () => {
     const result = await window.pywebview?.api?.open_data_folder();
     if (result && !result.ok) toast(result.message || 'Could not open the data folder.');

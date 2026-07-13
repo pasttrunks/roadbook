@@ -1,18 +1,16 @@
-# Roadbook 1.3.0
+# Roadbook 1.4.0
 
-This release brings live vehicle-market research into Roadbook and adds the value graphs requested in the Roadbook idea.
+This release strengthens Roadbook’s offline-first design and makes market-value research more open and resilient.
 
 ## What changed
 
-- Connect an optional Visor API key and import matching live listings directly into **My car value**.
-- Visor keys stay in local desktop settings and are excluded from Roadbook data exports and mirrored backups.
-- Added an interactive price-versus-mileage chart for comparable listings.
-- Added a depreciation history chart that grows as market snapshots are synced over time.
-- Live results remain saved as transparent, editable comparables; manual listings still work without any account or API key.
-- Kept the public Visor overview link as a no-key fallback.
-- Fixed local dates shifting by one day because UTC formatting was used for entries, maintenance intervals, charts, and imported records.
-- Replaced the personal Mazda/Carfax demo history with a clearly labeled, non-personal Toyota RAV4 sample dataset.
+- PDF, TXT, and CSV imports now use the packaged Python reader inside the Windows app—no remote PDF.js download is required.
+- Scanned/image-only PDFs now show clear searchable-text guidance instead of reporting an empty import as successful.
+- NHTSA receives classic and non-standard VIN/chassis queries instead of Roadbook rejecting everything that is not exactly 17 characters.
+- Added a visible **Reset Visor key** control so an invalid or expired key can always be replaced.
+- My Car Value keeps its aggregated hero estimate and depreciation charts independent of any API.
+- Added one-click research handoffs to Classic.com, Bring a Trailer, Cars & Bids, Cars.com, CarGurus, KBB, J.D. Power, and Edmunds.
+- Added **Export this view** for the currently selected maintenance status and history search.
+- Made per-service custom mileage and month intervals explicit in the maintenance guidance.
 
-## Important pricing note
-
-Visor currently includes starter API credit with no credit card required, then charges per request. Roadbook does not purchase or resell data. KBB and Carfax data are not embedded because no appropriate free public valuation API is available for this open-source app.
+Visor sync remains an optional convenience. Manual comparables, the hero estimate, research links, and charts work without it.

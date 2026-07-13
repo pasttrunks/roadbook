@@ -68,14 +68,18 @@ class DesktopApi:
 
     def decode_vin(self, vin: str) -> dict[str, Any]:
         cleaned = re.sub(r"[^A-Za-z0-9]", "", vin or "").upper()
-        if len(cleaned) != 17 or re.search(r"[IOQ]", cleaned):
-            return {"ok": False, "message": "Enter a valid 17-character VIN in Settings first."}
+        if not cleaned:
+            return {"ok": False, "message": "Enter a VIN or chassis number in Settings first."}
         try:
             url = f"https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/{quote(cleaned)}?format=json"
             request = urllib.request.Request(url, headers={"User-Agent": f"Roadbook/{APP_VERSION}"})
             with urllib.request.urlopen(request, timeout=15) as response:  # noqa: S310
                 payload = json.load(response)
             result = (payload.get("Results") or [{}])[0]
+            error_code = str(result.get("ErrorCode", "0"))
+            if not any(result.get(field) for field in ("ModelYear", "Make", "Model")):
+                detail = result.get("ErrorText") or "NHTSA could not identify this VIN or chassis number."
+                return {"ok": False, "message": str(detail)}
             return {
                 "ok": True,
                 "vin": cleaned,
@@ -85,6 +89,7 @@ class DesktopApi:
                 "trim": result.get("Trim", ""),
                 "body": result.get("BodyClass", ""),
                 "drive_type": result.get("DriveType", ""),
+                "warning": result.get("ErrorText", "") if error_code != "0" else "",
             }
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"NHTSA VIN lookup failed: {exc}"}
@@ -208,6 +213,11 @@ class DesktopApi:
                 text = self._read_pdf(path)
             else:
                 text = path.read_text(encoding="utf-8", errors="replace")
+            if not text.strip():
+                return {
+                    "ok": False,
+                    "message": f"{path.name} has no extractable text. It may be a scanned PDF; export it as searchable text or paste its service-history section.",
+                }
             return {"ok": True, "name": path.name, "text": text}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "message": f"Could not read {path.name}: {exc}"}
