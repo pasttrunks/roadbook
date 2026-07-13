@@ -1,8 +1,7 @@
-# Version 1.4.3
+# Version 1.4.4
 
-**Native Scanned PDF Support (OCR)**
+**PDF Match Inline Editing & Parser Limits**
 
-Roadbook now fully supports extracting maintenance history and text from scanned image PDFs!
-- We integrated the lightning-fast, native Windows 10/11 OCR engine (`Windows.Media.Ocr`).
-- When you import a scanned Carfax or service record without any text layers, Roadbook will now intelligently fall back to optical character recognition to read the text straight from the image.
-- Because we tap into your operating system's built-in capabilities, this runs 100% locally and instantly, keeping Roadbook completely offline and without adding any massive downloads or third-party tracking.
+We've drastically improved the PDF service history import experience, especially for highly flattened or low-quality scanned PDFs.
+- **Inline Editing**: You now have full control to manually correct extracted Dates and Mileages! Every parsed service record now features a new "Edit" button. Simply click it to adjust any details the parser missed before importing.
+- **Smarter Safety Limits**: When importing scanned PDFs where the layout gets heavily mangled by OCR, the parser will no longer aggressively force the first date it sees onto dozens of disjointed services. Instead, it securely prompts you to use the new Inline Editor, guaranteeing you are never stuck importing bad data.

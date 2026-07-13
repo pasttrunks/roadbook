@@ -998,8 +998,9 @@ function parseCarfaxText(text) {
     const contextText = [lines[index - 2], lines[index - 1], line].filter(Boolean).join(' | ');
     const matched = servicePatterns.filter(pattern => pattern.re.test(line));
     if (!matched.length) return;
-    const dateMatch = line.match(dateRegex) || contextText.match(dateRegex);
-    const mileageMatch = line.match(mileageRegex) || contextText.match(mileageRegex);
+    const isMassiveLine = line.length > 200;
+    const dateMatch = isMassiveLine ? null : (line.match(dateRegex) || contextText.match(dateRegex));
+    const mileageMatch = isMassiveLine ? null : (line.match(mileageRegex) || contextText.match(mileageRegex));
     const date = dateMatch ? normalizeDate(dateMatch[0]) : '';
     const mileage = mileageMatch ? Number(mileageMatch[1].replace(/,/g, '')) : 0;
 
@@ -1050,16 +1051,69 @@ function renderParsedResults() {
     box.innerHTML = empty('No parsed records yet.');
     return;
   }
-  box.innerHTML = state.parsedDrafts.map(item => `
-    <label class="parsed-card">
-      <input type="checkbox" data-parsed-id="${item.id}" ${item.selected ? 'checked' : ''} />
-      <span>
-        <strong>${escapeHTML(item.serviceName)}</strong>
-        <p>${item.date ? fmtDate(item.date) : 'No date found'} · ${item.mileage ? `${miles(item.mileage)} mi` : 'No mileage found'} · ${item.confidence}% match</p>
-        <p>${escapeHTML(item.notes)}</p>
-      </span>
-    </label>
-  `).join('');
+  
+  box.innerHTML = state.parsedDrafts.map(item => {
+    if (state.editingParsedId === item.id) {
+      return `
+        <div class="parsed-card editing">
+          <form class="parsed-edit-form" data-parsed-id="${item.id}">
+            <div class="parsed-edit-fields">
+              <label>Date<input type="date" name="date" value="${item.date}" required /></label>
+              <label>Mileage<input type="number" name="mileage" value="${item.mileage || ''}" required /></label>
+            </div>
+            <div class="parsed-edit-actions">
+              <button type="button" class="ghost cancel-edit-btn">Cancel</button>
+              <button type="submit" class="primary">Save</button>
+            </div>
+          </form>
+        </div>
+      `;
+    }
+    
+    return `
+      <label class="parsed-card">
+        <input type="checkbox" data-parsed-id="${item.id}" ${item.selected ? 'checked' : ''} />
+        <span>
+          <strong>${escapeHTML(item.serviceName)}</strong>
+          <p>${item.date ? fmtDate(item.date) : '<span style="color:var(--text-error)">No date found</span>'} · ${item.mileage ? `${miles(item.mileage)} mi` : '<span style="color:var(--text-error)">No mileage found</span>'} · ${item.confidence}% match</p>
+          <p>${escapeHTML(item.notes)}</p>
+        </span>
+        <button type="button" class="icon-button edit-parsed-btn" data-edit-id="${item.id}" aria-label="Edit this record" style="margin-left: auto;">
+          <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+      </label>
+    `;
+  }).join('');
+
+  $$('.edit-parsed-btn').forEach(btn => btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    state.editingParsedId = btn.dataset.editId;
+    renderParsedResults();
+  }));
+
+  $$('.cancel-edit-btn').forEach(btn => btn.addEventListener('click', () => {
+    state.editingParsedId = null;
+    renderParsedResults();
+  }));
+
+  $$('.parsed-edit-form').forEach(form => form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const id = form.dataset.parsedId;
+    const item = state.parsedDrafts.find(d => d.id === id);
+    if (item) {
+      item.date = formData.get('date');
+      item.mileage = Number(formData.get('mileage'));
+      item.selected = true;
+    }
+    state.editingParsedId = null;
+    renderParsedResults();
+  }));
+
+  $$('[data-parsed-id][type="checkbox"]').forEach(input => input.addEventListener('change', () => {
+    const item = state.parsedDrafts.find(d => d.id === input.dataset.parsedId);
+    if (item) item.selected = input.checked;
+  }));
 }
 
 function importParsed() {
